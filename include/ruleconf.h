@@ -1,0 +1,8 @@
+//
+// Created by rn7s2 on 2023/6/22.
+//
+
+#ifndef BUPT_SCS_DNS_RELAY_RULECONF_H
+#define BUPT_SCS_DNS_RELAY_RULECONF_H
+
+#endif //BUPT_SCS_DNS_RELAY_RULECONF_H

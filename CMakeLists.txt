@@ -3,4 +3,10 @@ project(bupt-scs-dns-relay C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(bupt-scs-dns-relay main.c)
+set(SOURCE
+        src/main.c
+        src/process.c include/process.h
+        src/ruleconf.c include/ruleconf.h)
+add_executable(bupt-scs-dns-relay ${SOURCE})
+
+target_include_directories(bupt-scs-dns-relay PRIVATE include)
