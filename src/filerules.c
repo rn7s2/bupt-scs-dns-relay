@@ -10,32 +10,38 @@
 
 extern struct Config server_config;
 
+/// 轮询文件规则的线程
+static pthread_t file_rules_poller_thread;
+
 /// 来自文件的 DNS 规则列表
 ///
 /// 注意：读取时需要加锁
 FileRules filerules;
 
+/// 用于保护 filerules 的互斥锁
+pthread_mutex_t filerules_mutex;
+
 /// 来自文件的 DNS 规则列表的 back buffer，用于无缝更新
 static FileRules filerules_back;
 
-/// 用于保护 filerules 和 filerules_back 的互斥锁
-pthread_mutex_t filerules_mutex;
-
-pthread_t init_filerules()
+void init_filerules()
 {
     pthread_mutex_init(&filerules_mutex, NULL);
     filerules = make_trienode(NULL);
     filerules_back = NULL;
 
     // 创建一个线程，用于轮询文件规则
-    pthread_t file_rules_poller;
-    pthread_create(&file_rules_poller, NULL, (void *(*)(void *)) poll_filerules, NULL);
-    return file_rules_poller;
+    pthread_create(&file_rules_poller_thread, NULL, (void *(*)(void *)) poll_filerules, NULL);
 }
 
 void free_filerules()
 {
+    pthread_cancel(file_rules_poller_thread);
+    pthread_join(file_rules_poller_thread, NULL);
+
+    pthread_mutex_lock(&filerules_mutex);
     free_trienode(filerules, 1);
+    pthread_mutex_unlock(&filerules_mutex);
     pthread_mutex_destroy(&filerules_mutex);
 }
 
@@ -44,6 +50,8 @@ void free_filerules()
 
 _Noreturn void poll_filerules()
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_DEFERRED, NULL);
+
     time_t last_modify_timestamp = 0;
 
     while (1) {
@@ -58,6 +66,7 @@ _Noreturn void poll_filerules()
         // 如果文件被修改过
         if (current_modify_timestamp != last_modify_timestamp) {
             // TODO: 读取文件规则至 filerules_back
+            filerules_back = make_trienode(NULL);
 
             // 更新最后修改时间
             last_modify_timestamp = current_modify_timestamp;

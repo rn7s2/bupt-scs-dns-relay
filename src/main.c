@@ -4,19 +4,14 @@
 #include <signal.h>
 #include <glib.h>
 
-/// 服务器的线程信息
-static struct {
-    pthread_t file_rules_poller;
-    GThreadPool *dns_worker_pool;
-} threads = {0};
-
+/// 服务器的配置信息
 struct Config server_config = {0};
 
 /// 初始化服务器
 static void init();
 
 /// 优雅地释放资源、关闭服务器
-static void graceful_shutdown();
+static void graceful_shutdown(int sig);
 
 int main(int argc, char **argv)
 {
@@ -37,17 +32,16 @@ static void init()
 {
     // 初始化各个模块
     init_logger();
-    threads.file_rules_poller = init_filerules();
+    init_filerules();
 
     // 注册 Ctrl + C 信号处理函数
     signal(SIGINT, graceful_shutdown);
 }
 
-static void graceful_shutdown()
+static void graceful_shutdown(int sig)
 {
     // 停止各个模块
     free_filerules();
-    pthread_cancel(threads.file_rules_poller);
 
     stop("正在停止服务器……");
 }

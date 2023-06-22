@@ -11,7 +11,7 @@
 typedef struct TrieNode *FileRules;
 
 /// 初始化来自文件的 DNS 规则模块，该模块轮询热更新 DNS 规则，无需重启服务器
-pthread_t init_filerules();
+void init_filerules();
 
 /// 释放 filerules 模块的资源
 void free_filerules();
