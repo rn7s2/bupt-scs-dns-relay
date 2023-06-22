@@ -20,20 +20,13 @@ struct Rule {
     char ip[MAX_IP_LENGTH];
 };
 
-/// 来自文件的规则列表
-typedef struct TrieNode *FileRules;
-
-struct Cache {
-    struct TrieNode *root;
-    GList *cache_most_recently_used_first;
-};
-
-/// 初始化来自文件的 DNS 规则模块，该模块轮询热更新 DNS 规则，无需重启服务器
-pthread_t init_file_rules();
-
 /**
- * 从文件中轮询规则，并通过 cache 和 back_cache 的替换来进行双 buffer 无缝更新
+ * 按照 文件硬规则, Cache/数据库的顺序查找域名
+ * 返回匹配到的 IP. 其中 Cache/数据库 部分使用
+ * LRU 算法进行 DNS 缓存
+ * @param domain
+ * @return
  */
-_Noreturn void poll_file_rules();
+char *match_domain(const char *domain);
 
 #endif //BUPT_SCS_DNS_RELAY_RULES_H

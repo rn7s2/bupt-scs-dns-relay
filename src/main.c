@@ -1,6 +1,6 @@
 #include "argsparser.h"
 #include "logger.h"
-#include "rules.h"
+#include "filerules.h"
 #include <signal.h>
 #include <glib.h>
 
@@ -37,7 +37,7 @@ static void init()
 {
     // 初始化各个模块
     init_logger();
-    threads.file_rules_poller = init_file_rules();
+    threads.file_rules_poller = init_filerules();
 
     // 注册 Ctrl + C 信号处理函数
     signal(SIGINT, graceful_shutdown);
@@ -46,6 +46,7 @@ static void init()
 static void graceful_shutdown()
 {
     // 停止各个模块
+    free_filerules();
     pthread_cancel(threads.file_rules_poller);
 
     stop("正在停止服务器……");

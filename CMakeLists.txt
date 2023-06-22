@@ -14,6 +14,8 @@ set(SOURCE
         src/main.c
         src/argsparser.c include/argsparser.h
         src/rules.c include/rules.h
+        src/cache.c src/cache.h
+        src/filerules.c include/filerules.h
         src/logger.c include/logger.h
         src/util.c include/util.h
         src/trie.c include/trie.h)
@@ -25,4 +27,3 @@ add_subdirectory(3rd-party/cargs)
 target_link_libraries(bupt-scs-dns-relay cargs)
 
 target_include_directories(bupt-scs-dns-relay PRIVATE include)
-target_include_directories(bupt-scs-dns-relay PRIVATE 3rd-party/trie)

@@ -31,16 +31,26 @@ int parse_args(int argc, char **argv, struct Config *config)
             case 'h':
                 printf("用法: dns-relay [OPTION]\n"
                        "OPTION:\n"
-                       "  -d, --debug               调试级别 1 (仅输出时间坐标，序号，查询的域名)\n"
+                       "  -d, --debug               调试级别 1 (仅输出时间坐标、序号和查询的域名)\n"
                        "  -v, --verbose             调试级别 2 (输出冗长的调试信息)\n"
                        "  -h, --help                显示本帮助信息，然后退出\n"
-                       "  -s, --server=VALUE        使用指定的 DNS 服务器\n"
+                       "  -s, --server=VALUE        使用指定的 DNS 服务器 (默认为阿里 DNS)\n"
                        "  -f, --filename=FILE       使用指定的配置文件 (默认为 dnsrelay.txt)\n");
                 exit(0);
             default:
                 printf("无法识别的选项: %c\n", identifier);
                 break;
         }
+    }
+
+    // 如果没有指定 DNS 服务器，则使用默认的 DNS 服务器
+    if (config->dns_server_ipaddr == NULL) {
+        config->dns_server_ipaddr = "223.5.5.5"; // 阿里 DNS
+    }
+
+    // 如果没有指定配置文件，则使用默认的配置文件
+    if (config->filename == NULL) {
+        config->filename = "dnsrelay.txt";
     }
 
     return 0;
