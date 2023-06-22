@@ -119,7 +119,7 @@ void fatal(const char *format, ...)
     commit_log(FATAL, format);
 }
 
-void stop(const char *format, ...)
+void free_logger()
 {
-    commit_log(KILL, format);
+    commit_log(KILL, "正在停止服务器...");
 }

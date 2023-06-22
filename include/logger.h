@@ -26,6 +26,9 @@ void init_logger();
  */
 void run_logger();
 
+/// 停止日志系统，并释放资源
+void free_logger();
+
 /// 打印一条调试信息
 void debug(const char *format, ...);
 
@@ -40,8 +43,5 @@ void error(const char *format, ...);
 
 /// 打印一条致命错误
 void fatal(const char *format, ...);
-
-/// 停止日志系统，释放资源并打印一条关闭日志
-void stop(const char *format, ...);
 
 #endif //BUPT_SCS_DNS_RELAY_LOGGER_H

@@ -14,7 +14,7 @@ set(SOURCE
         src/main.c
         src/argsparser.c include/argsparser.h
         src/rules.c include/rules.h
-        src/cache.c src/cache.h
+        src/cache.c include/cache.h
         src/filerules.c include/filerules.h
         src/logger.c include/logger.h
         src/util.c include/util.h

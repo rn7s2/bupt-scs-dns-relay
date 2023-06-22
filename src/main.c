@@ -2,7 +2,6 @@
 #include "logger.h"
 #include "filerules.h"
 #include <signal.h>
-#include <glib.h>
 
 /// 服务器的配置信息
 struct Config server_config = {0};
@@ -24,6 +23,7 @@ int main(int argc, char **argv)
     // 初始化服务器的各个模块
     init();
 
+    // 主线程运行日志系统
     run_logger();
     return 0;
 }
@@ -43,5 +43,6 @@ static void graceful_shutdown(int sig)
     // 停止各个模块
     free_filerules();
 
-    stop("正在停止服务器……");
+    // 请最后释放日志系统，因为日志系统运行在主线程
+    free_logger();
 }

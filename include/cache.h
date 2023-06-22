@@ -9,7 +9,7 @@
 
 struct Cache {
     struct TrieNode *root;
-    GList *cache_most_recently_used_first;
+    GList *cache_mru_first; // 最近使用的缓存在头，最长时间未使用的缓存在尾
 };
 
 #endif //BUPT_SCS_DNS_RELAY_CACHE_H
