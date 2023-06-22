@@ -5,6 +5,8 @@
 #include "util.h"
 
 #include <ctype.h>
+#include <time.h>
+#include <stdio.h>
 
 void str_tolower(char *str)
 {
@@ -13,4 +15,17 @@ void str_tolower(char *str)
             str[i] = tolower(str[i]);
         }
     }
+}
+
+void format_time(char *output)
+{
+    time_t rawtime;
+    struct tm *timeinfo;
+
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+
+    sprintf(output, "%04d-%02d-%02d %02d:%02d:%02d", timeinfo->tm_year + 1900,
+            timeinfo->tm_mon + 1, timeinfo->tm_mday,
+            timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
 }

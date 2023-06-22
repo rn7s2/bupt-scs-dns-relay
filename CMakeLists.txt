@@ -7,12 +7,18 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(deps REQUIRED IMPORTED_TARGET glib-2.0)
+
 set(SOURCE
         src/main.c
         src/argsparser.c include/argsparser.h
+        src/logger.c include/logger.h
         src/util.c include/util.h
         3rd-party/trie/trie.c 3rd-party/trie/trie.h)
 add_executable(bupt-scs-dns-relay ${SOURCE})
+
+target_link_libraries(bupt-scs-dns-relay PkgConfig::deps)
 
 add_subdirectory(3rd-party/cargs)
 target_link_libraries(bupt-scs-dns-relay cargs)
