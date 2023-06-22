@@ -16,6 +16,7 @@ set(SOURCE
         src/rules.c include/rules.h
         src/cache.c include/cache.h
         src/filerules.c include/filerules.h
+        src/handler.c include/handler.h
         src/logger.c include/logger.h
         src/util.c include/util.h
         src/trie.c include/trie.h)

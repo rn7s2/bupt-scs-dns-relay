@@ -17,4 +17,10 @@ void str_tolower(char *str);
  */
 void format_time(char *output);
 
+/**
+ * 获取 CPU 核心数
+ * @return CPU 核心数
+ */
+int get_cpu_num();
+
 #endif //BUPT_SCS_DNS_RELAY_UTIL_H
