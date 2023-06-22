@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int parse_args(int argc, char **argv, struct config *config)
+int parse_args(int argc, char **argv, struct Config *config)
 {
     cag_option_context context;
 
@@ -46,7 +46,7 @@ int parse_args(int argc, char **argv, struct config *config)
     return 0;
 }
 
-void dump_args(struct config *config)
+void dump_args(struct Config *config)
 {
     printf("debug_level: %d\n", config->debug_level);
     printf("dns_server_ipaddr: %s\n", config->dns_server_ipaddr);

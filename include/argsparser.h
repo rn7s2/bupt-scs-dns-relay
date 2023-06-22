@@ -43,7 +43,7 @@ static struct cag_option options[] = {
 /**
  * dns-relay 的命令行参数信息
  */
-struct config {
+struct Config {
     int debug_level;
     const char *dns_server_ipaddr;
     const char *filename;
@@ -56,12 +56,12 @@ struct config {
  * @param config 解析结果的指针
  * @return 解析成功或失败，成功为 0，失败为 -1
  */
-int parse_args(int argc, char **argv, struct config *config);
+int parse_args(int argc, char **argv, struct Config *config);
 
 /**
  * 打印命令行参数
  * @param config 命令行参数信息
  */
-void dump_args(struct config *config);
+void dump_args(struct Config *config);
 
 #endif //BUPT_SCS_DNS_RELAY_ARGSPARSER_H

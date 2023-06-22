@@ -13,9 +13,10 @@ pkg_check_modules(deps REQUIRED IMPORTED_TARGET glib-2.0)
 set(SOURCE
         src/main.c
         src/argsparser.c include/argsparser.h
+        src/rules.c include/rules.h
         src/logger.c include/logger.h
         src/util.c include/util.h
-        3rd-party/trie/trie.c 3rd-party/trie/trie.h)
+        src/trie.c include/trie.h)
 add_executable(bupt-scs-dns-relay ${SOURCE})
 
 target_link_libraries(bupt-scs-dns-relay PkgConfig::deps)
