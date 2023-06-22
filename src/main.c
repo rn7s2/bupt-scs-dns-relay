@@ -1,4 +1,4 @@
-#include "argsparser.h"
+#include "args.h"
 #include "logger.h"
 #include "filerules.h"
 #include <signal.h>
@@ -16,9 +16,6 @@ int main(int argc, char **argv)
 {
     // 从命令行参数中解析出配置信息
     parse_args(argc, argv, &server_config);
-    if (server_config.debug_level) {
-        dump_args(&server_config);
-    }
 
     // 初始化服务器的各个模块
     init();

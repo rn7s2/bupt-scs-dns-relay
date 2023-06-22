@@ -2,8 +2,8 @@
 // Created by rn7s2 on 2023/6/22.
 //
 
-#ifndef BUPT_SCS_DNS_RELAY_ARGSPARSER_H
-#define BUPT_SCS_DNS_RELAY_ARGSPARSER_H
+#ifndef BUPT_SCS_DNS_RELAY_ARGS_H
+#define BUPT_SCS_DNS_RELAY_ARGS_H
 
 #include "cargs.h"
 
@@ -64,4 +64,4 @@ int parse_args(int argc, char **argv, struct Config *config);
  */
 void dump_args(struct Config *config);
 
-#endif //BUPT_SCS_DNS_RELAY_ARGSPARSER_H
+#endif //BUPT_SCS_DNS_RELAY_ARGS_H

@@ -12,7 +12,7 @@ pkg_check_modules(deps REQUIRED IMPORTED_TARGET glib-2.0)
 
 set(SOURCE
         src/main.c
-        src/argsparser.c include/argsparser.h
+        src/args.c include/args.h
         src/rules.c include/rules.h
         src/cache.c include/cache.h
         src/filerules.c include/filerules.h

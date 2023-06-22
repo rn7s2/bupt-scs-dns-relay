@@ -2,7 +2,7 @@
 // Created by rn7s2 on 2023/6/22.
 //
 
-#include "argsparser.h"
+#include "args.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +51,10 @@ int parse_args(int argc, char **argv, struct Config *config)
     // 如果没有指定配置文件，则使用默认的配置文件
     if (config->filename == NULL) {
         config->filename = "dnsrelay.txt";
+    }
+
+    if (config->debug_level >= 2) {
+        dump_args(config);
     }
 
     return 0;
