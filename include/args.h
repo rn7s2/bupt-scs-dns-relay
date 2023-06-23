@@ -12,13 +12,13 @@
  */
 static struct cag_option options[] = {
         {.identifier = 'd',
-                .access_letters = "dD",
+                .access_letters = "d",
                 .access_name = "debug",
                 .value_name = NULL,
                 .description = "调试级别 1 (仅输出时间坐标，序号，查询的域名)"},
 
         {.identifier = 'm',
-                .access_letters = "vV",
+                .access_letters = "v",
                 .access_name = "verbose",
                 .value_name = NULL,
                 .description = "调试级别 2 (输出冗长的调试信息)"},
@@ -35,16 +35,24 @@ static struct cag_option options[] = {
                 .value_name = "filename",
                 .description = "使用指定的配置文件 (默认为 dnsrelay.txt)"},
 
-        {.identifier = 'h',
+        {.identifier = 'p',
+                .access_letters = "p",
+                .access_name="port",
+                .value_name="port",
+                .description="使用指定的端口号 (默认为53)"},
+
+        {
+                .identifier = 'h',
                 .access_letters = "h",
                 .access_name = "help",
-                .description = "显示本帮助信息，然后退出"}};
+                .description = "显示本帮助信息，然后退出"}
+};
 
 /**
  * dns-relay 的命令行参数信息
  */
 struct Config {
-    int debug_level;
+    int debug_level, port;
     const char *dns_server_ipaddr;
     const char *filename;
 };

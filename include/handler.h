@@ -7,12 +7,15 @@
 
 #include <gmodule.h>
 
-GThreadPool *worker_pool;
-
 /**
  * 初始化 handler 模块
  */
 void init_handler();
+
+/**
+ * 运行 handler 模块
+ */
+void run_handler();
 
 /**
  * 释放 handler 模块的资源
