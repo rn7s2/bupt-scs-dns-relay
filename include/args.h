@@ -41,6 +41,12 @@ static struct cag_option options[] = {
                 .value_name="port",
                 .description="使用指定的端口号 (默认为53)"},
 
+        {.identifier = 'c',
+                .access_letters = "c",
+                .access_name = "cache",
+                .value_name = "cache",
+                .description = "指定 Cache 最大数量 (默认为 2048)"},
+
         {
                 .identifier = 'h',
                 .access_letters = "h",
@@ -52,7 +58,7 @@ static struct cag_option options[] = {
  * dns-relay 的命令行参数信息
  */
 struct Config {
-    int debug_level, port;
+    int debug_level, port, cache_size;
     const char *dns_server_ipaddr;
     const char *filename;
 };

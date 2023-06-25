@@ -7,6 +7,7 @@
 
 #include "filerules.h"
 #include "args.h"
+#include "trie.h"
 
 extern struct Config server_config;
 
@@ -16,10 +17,10 @@ static pthread_t file_rules_poller_thread;
 /// 来自文件的 DNS 规则列表
 ///
 /// 注意：读取时需要加锁
-FileRules filerules;
+static FileRules filerules;
 
 /// 用于保护 filerules 的互斥锁
-pthread_mutex_t filerules_mutex;
+static pthread_mutex_t filerules_mutex;
 
 /// 来自文件的 DNS 规则列表的 back buffer，用于无缝更新
 static FileRules filerules_back;
@@ -84,4 +85,17 @@ _Noreturn void poll_filerules()
 
         sleep(POLL_INTERVAL);
     }
+}
+
+int match_filerules(struct DnsQuestion *question, struct DnsResource *resource)
+{
+    pthread_mutex_lock(&filerules_mutex);
+    struct DnsResource *result = search_trie(filerules, question->qname);
+    if (result == NULL) {
+        pthread_mutex_unlock(&filerules_mutex);
+        return 0;
+    }
+    *resource = *result;
+    pthread_mutex_unlock(&filerules_mutex);
+    return 1;
 }

@@ -10,6 +10,7 @@
 int parse_args(int argc, char **argv, struct Config *config)
 {
     config->port = 53;
+    config->cache_size = 2048;
 
     cag_option_context context;
 
@@ -33,6 +34,9 @@ int parse_args(int argc, char **argv, struct Config *config)
             case 'p':
                 config->port = atoi(cag_option_get_value(&context));
                 break;
+            case 'c':
+                config->cache_size = atoi(cag_option_get_value(&context));
+                break;
             case 'h':
                 printf("用法: dns-relay [OPTION]\n"
                        "OPTION:\n"
@@ -41,6 +45,7 @@ int parse_args(int argc, char **argv, struct Config *config)
                        "  -h, --help                显示本帮助信息，然后退出\n"
                        "  -s, --server=VALUE        使用指定的 DNS 服务器 (默认为阿里 DNS)\n"
                        "  -p, --port=VALUE          使用指定的端口号 (默认为 53)\n"
+                       "  -c, --cache=VALUE         指定 Cache 最大数量 (默认为 2048)\n"
                        "  -f, --filename=FILE       使用指定的配置文件 (默认为 dnsrelay.txt)\n");
                 exit(0);
             default:

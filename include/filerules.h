@@ -6,6 +6,7 @@
 #define BUPT_SCS_DNS_RELAY_FILERULES_H
 
 #include "rules.h"
+#include "dns.h"
 
 /// 来自文件的规则列表
 typedef struct TrieNode *FileRules;
@@ -20,5 +21,13 @@ void free_filerules();
  * 从文件中轮询规则，并通过 cache 和 back_cache 的替换来进行双 buffer 无缝更新
  */
 _Noreturn void poll_filerules();
+
+/**
+ * 在文件规则中匹配 DNS 问题
+ * @param question DNS 问题
+ * @param resource 要保存查找到的 DNS 资源的指针
+ * @return 是否成功，0 为失败，1 为成功
+ */
+int match_filerules(struct DnsQuestion *question, struct DnsResource* resource);
 
 #endif //BUPT_SCS_DNS_RELAY_FILERULES_H
