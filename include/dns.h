@@ -9,9 +9,12 @@
 
 #include <stdint.h>
 
-#define MAX_DNSBUF_LEN 512
+#define MAX_DNSBUF_LEN (512 * 2)
 #define MAX_DOMAIN_LEN 256
 
+/**
+ * DNS 报文头部
+ */
 struct DnsHeader {
     unsigned id: 16;        /* query identification number */
 
@@ -35,6 +38,9 @@ struct DnsHeader {
     uint16_t arcount;       /* number of resource entries */
 };
 
+/**
+ * DNS 一个询问
+ */
 struct DnsQuestion {
     char qname[MAX_DOMAIN_LEN];
     uint16_t qtype;
@@ -48,13 +54,15 @@ enum DnsType {
     MX = 15,
 };
 
+/**
+ * DNS 资源记录
+ */
 struct DnsResource {
     char name[MAX_DOMAIN_LEN];
     uint16_t type;
     uint16_t class;
     uint32_t ttl;
     uint16_t rdlength;
-    time_t recorded_time;
 
     union {
         struct {
@@ -76,24 +84,94 @@ struct DnsResource {
     } rdata;
 };
 
+/**
+ * DNS 回答
+ */
+struct DnsAnswer {
+    int size;
+    time_t cached_time;
+    char qname[MAX_DOMAIN_LEN];
+    struct DnsResource resources[0];
+};
+
+/**
+ * DNS 请求处理函数，在线程池的各个线程中调用，并发处理 DNS 请求
+ * @param args 请求参数，包含整个 DNS 报文
+ * @param user_data 无意义，可忽略
+ */
 void handle_dns_request(struct RequestArgs *args, void *user_data);
 
+/**
+ * 将 DNS 报文头部的各个字段从网络字节序转换为主机字节序
+ * @param header
+ */
 void dns_header_ntohs(struct DnsHeader *header);
 
+/**
+ * 将 DNS 报文头部的各个字段从主机字节序转换为网络字节序
+ * @param header
+ */
 void dns_header_htons(struct DnsHeader *header);
 
-// void dns_header_dump(struct DnsHeader *header);
+void dns_header_dump(struct DnsHeader *header);
 
+/**
+ * 解析 DNS 报文中的问题部分
+ * @param buf DNS 报文
+ * @param questions 问题数组，解析的结果会被保存在这里
+ * @return 解析完问题部分后相对 buf 的偏移量
+ */
 int dns_parse_questions(char *buf, struct DnsQuestion questions[]);
 
+/**
+ * 解析 DNS 报文的名称格式
+ * @param buf DNS 报文
+ * @param offset 偏移量
+ * @param qname 解析结果
+ * @return 解析完该名称后相对 buf 的偏移量
+ */
 int dns_parse_qname(const char *buf, int offset, char *qname);
 
-// void dns_question_dump(struct DnsQuestion *question);
+void dns_question_dump(struct DnsQuestion *question);
 
-struct DnsResource dns_resolve(struct DnsQuestion *question);
+/**
+ * 根据 question 联系上级 DNS 服务器查询
+ * @param question
+ * @return 失败为 NULL
+ */
+struct DnsAnswer * dns_query(struct DnsQuestion *question);
 
-// void dns_reply_dump(struct DnsResource *reply);
+/**
+ * 将 question 转换构造为 DNS 报文
+ * @param question
+ * @param buf 保存报文的 buffer
+ * @return 报文的 ID
+ */
+uint16_t dns_query_buf_new(struct DnsQuestion *question, char *buf);
 
-int dns_reply_to_resource_record(struct DnsResource *reply, char *buf);
+/**
+ * 将域名转换为 DNS 报文中的名称格式
+ * @param name
+ * @param buf 保存名称的 buffer
+ * @return 转换后的名称长度
+ */
+int dns_to_qname(const char *name, char *buf);
+
+/**
+ * 按照文件规则、Cache、上级 DNS 服务器的顺序解析 question，返回 answer
+ * @param question
+ * @return NULL 代表解析失败
+ */
+struct DnsAnswer *dns_resolve(struct DnsQuestion *question);
+
+// void dns_answer_dump(struct DnsAnswer *reply);
+
+/**
+ * 将 DNS 回答转换为 DNS 报文，写入 buf 中
+ * @param reply
+ * @param buf
+ * @return 写入后相对 buf 的偏移量
+ */
+int dns_answer_to_resource_record(struct DnsAnswer *reply, char *buf);
 
 #endif //BUPT_SCS_DNS_RELAY_DNS_H
