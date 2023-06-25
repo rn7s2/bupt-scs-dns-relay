@@ -59,6 +59,8 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
         // 对每个问题记录进行域名解析,获取响应
         for (int i = 0; i < header->qdcount; i++) {
             struct DnsAnswer *reply = dns_resolve(&questions[i]);
+            // TODO 处理解析失败的情况
+
             // dns_reply_dump(&reply);
             offset = dns_answer_to_resource_record(reply, reply_buf + offset);
             free(reply);
@@ -180,7 +182,7 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
 
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 100000; // TODO 改为计算出的 RTO (重传超时时间)
+    tv.tv_usec = 10000000; // TODO 改为计算出的 RTO (重传超时时间)
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     try_recv:
@@ -316,6 +318,7 @@ struct DnsAnswer *dns_resolve(struct DnsQuestion *question)
     }
 
     // 3. 如果缓存未命中，向 DNS 服务器发送查询请求，获取响应
+    // TODO 处理 AA (authoritative answer)
     if ((answer = dns_query(question))) {
         // 将响应写入 Cache
         // 复制一份 answer, 因为返回的 answer 会被释放
