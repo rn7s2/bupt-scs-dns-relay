@@ -12,6 +12,12 @@
 void str_tolower(char *str);
 
 /**
+ * 将字符串转换为大写
+ * @param str 字符串
+ */
+void str_toupper(char *str);
+
+/**
  * 格式化时间
  * @param output 输出缓冲区
  */

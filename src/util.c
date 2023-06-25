@@ -18,6 +18,15 @@ void str_tolower(char *str)
     }
 }
 
+void str_toupper(char *str)
+{
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (islower(str[i])) {
+            str[i] = toupper(str[i]);
+        }
+    }
+}
+
 void format_time(char *output)
 {
     time_t rawtime;

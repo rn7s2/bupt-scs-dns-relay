@@ -3,8 +3,11 @@
 //
 
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <string.h>
+#include <malloc.h>
 
 #include "filerules.h"
 #include "args.h"
@@ -120,7 +123,15 @@ int read_rules_to_trie(struct TrieNode **rules)
     char ip[MAX_DOMAIN_LEN], domain[MAX_DOMAIN_LEN], tmp[MAX_DOMAIN_LEN];
     while ((fscanf(fp, "%s %s", ip, domain) == 2)) {
         if (inet_pton(AF_INET, ip, tmp) || inet_pton(AF_INET6, ip, tmp)) {
-            root = insert_trie(root, domain, ip);
+            str_toupper(domain);
+            struct DnsResource *resource = malloc(sizeof(struct DnsResource));
+            strcpy(resource->name, domain);
+            resource->type = 0x1;
+            resource->class = 0x1;
+            resource->ttl = 600;
+            resource->rdlength = 4;
+            resource->rdata.A.addr = inet_addr(ip);
+            root = insert_trie(root, domain, resource);
         } else {
             error("Invalid IP address: %s\n", ip);
             *rules = root;
