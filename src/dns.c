@@ -2,7 +2,6 @@
 // Created by rn7s2 on 2023/6/23.
 //
 
-#include <malloc.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <errno.h>
@@ -12,6 +11,7 @@
 #include "filerules.h"
 #include "cache.h"
 #include "logger.h"
+#include "util.h"
 
 extern struct Config server_config;
 
@@ -46,7 +46,10 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
         // 解析里面的问题，并返回偏移量
         int offset = dns_parse_questions(args->buf, questions);
         for (int i = 0; i < header->qdcount; i++) {
-            // dns_question_dump(&questions[i]);
+            str_toupper(questions[i].qname);
+            if (server_config.debug_level >= 2) {
+                dns_question_dump(questions + i);
+            }
         }
 
         // 分配DNS响应缓冲区,并复制原始请求
@@ -61,6 +64,7 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
             free(reply);
             // 若长度大于512则丢弃
             if (offset > 512) {
+                free(args->buf);
                 free(args);
                 return;
             }
@@ -77,6 +81,7 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
         free(questions);
     }
 
+    free(args->buf);
     free(args);
 }
 
@@ -100,21 +105,21 @@ void dns_header_htons(struct DnsHeader *header)
 
 void dns_header_dump(struct DnsHeader *header)
 {
-    debug("id: %d\n", header->id);
-    debug("qr: %d\n", header->qr);
-    debug("opcode: %d\n", header->opcode);
-    debug("aa: %d\n", header->aa);
-    debug("tc: %d\n", header->tc);
-    debug("rd: %d\n", header->rd);
-    debug("ra: %d\n", header->ra);
-    debug("z: %d\n", header->z);
-    debug("ad: %d\n", header->ad);
-    debug("cd: %d\n", header->cd);
-    debug("rcode: %d\n", header->rcode);
-    debug("qdcount: %d\n", header->qdcount);
-    debug("ancount: %d\n", header->ancount);
-    debug("nscount: %d\n", header->nscount);
-    debug("arcount: %d\n", header->arcount);
+    debug("id: %d", header->id);
+    debug("qr: %d", header->qr);
+    debug("opcode: %d", header->opcode);
+    debug("aa: %d", header->aa);
+    debug("tc: %d", header->tc);
+    debug("rd: %d", header->rd);
+    debug("ra: %d", header->ra);
+    debug("z: %d", header->z);
+    debug("ad: %d", header->ad);
+    debug("cd: %d", header->cd);
+    debug("rcode: %d", header->rcode);
+    debug("qdcount: %d", header->qdcount);
+    debug("ancount: %d", header->ancount);
+    debug("nscount: %d", header->nscount);
+    debug("arcount: %d", header->arcount);
 }
 
 int dns_parse_questions(char *buf, struct DnsQuestion questions[])
@@ -154,9 +159,9 @@ int dns_parse_qname(const char *buf, int offset, char *qname)
 
 void dns_question_dump(struct DnsQuestion *question)
 {
-    debug("qname: %s\n", question->qname);
-    debug("qtype: %d\n", question->qtype);
-    debug("qclass: %d\n", question->qclass);
+    debug("qname: %s", question->qname);
+    debug("qtype: %d", question->qtype);
+    debug("qclass: %d", question->qclass);
 }
 
 struct DnsAnswer *dns_query(struct DnsQuestion *question)

@@ -3,9 +3,9 @@
 //
 
 #include <netinet/in.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
 #include "handler.h"
 #include "args.h"
 #include "util.h"
@@ -91,13 +91,12 @@ void run_handler()
                 fatal("IPv4 socket recvfrom 失败");
                 exit(1);
             }
-            buf[n] = '\0';
 
             struct RequestArgs *args = malloc(sizeof(struct RequestArgs));
             args->sockfd = sockfd;
             memcpy(&args->client_addr, &client_addr, client_addr_len);
-            args->buf = (char *) malloc(sizeof(char) * (n + 1));
-            strcpy(args->buf, buf);
+            args->buf = (char *) malloc(sizeof(char) * n);
+            memcpy(args->buf, buf, n);
             args->n = n;
 
             // 将请求交给线程池处理
@@ -115,13 +114,12 @@ void run_handler()
                 fatal("IPv6 socket recvfrom 失败");
                 exit(1);
             }
-            buf[n] = '\0';
 
             struct RequestArgs *args = malloc(sizeof(struct RequestArgs));
             args->sockfd = sockfd;
             memcpy(&args->client_addr, &client_addr6, client_addr6_len);
-            args->buf = (char *) malloc(sizeof(char) * (n + 1));
-            strcpy(args->buf, buf);
+            args->buf = (char *) malloc(sizeof(char) * n);
+            memcpy(args->buf, buf, n);
             args->n = n;
 
             // 将请求交给线程池处理

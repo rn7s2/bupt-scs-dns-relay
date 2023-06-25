@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <stdio.h>
-#include <sys/unistd.h>
+#include <unistd.h>
 
 void str_tolower(char *str)
 {

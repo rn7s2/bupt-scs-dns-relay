@@ -2,7 +2,7 @@
 // Created by 雷瑞祺 on 2023/6/22.
 //
 
-#include <malloc.h>
+#include <memory.h>
 #include <string.h>
 #include "cache.h"
 #include "trie.h"
@@ -20,7 +20,7 @@ void init_cache()
     pthread_mutex_init(&cache_mutex, NULL);
 
     cache.cached = 0;
-    cache.root = NULL;
+    cache.root = make_trienode(NULL);
     cache.cache_mru_first = NULL;
 }
 

@@ -44,4 +44,7 @@ void error(const char *format, ...);
 /// 打印一条致命错误
 void fatal(const char *format, ...);
 
+/// 打印一条信息，并停止服务器
+static void kill_logger(const char *format, ...);
+
 #endif //BUPT_SCS_DNS_RELAY_LOGGER_H

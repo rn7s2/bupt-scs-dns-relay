@@ -3,11 +3,9 @@
 //
 
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include <malloc.h>
 
 #include "filerules.h"
 #include "args.h"

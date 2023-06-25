@@ -94,6 +94,10 @@ struct DnsAnswer {
     struct DnsResource resources[0];
 };
 
+void init_id();
+
+void free_id();
+
 /**
  * DNS 请求处理函数，在线程池的各个线程中调用，并发处理 DNS 请求
  * @param args 请求参数，包含整个 DNS 报文

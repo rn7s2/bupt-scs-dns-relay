@@ -56,7 +56,7 @@ void run_logger()
  * @param format
  * @param ...
  */
-static void commit_log(enum LogLevel level, const char *format, ...)
+static void commit_log(enum LogLevel level, const char *format, va_list args)
 {
     struct LogMsg *log_msg = malloc(sizeof(struct LogMsg));
 
@@ -64,11 +64,8 @@ static void commit_log(enum LogLevel level, const char *format, ...)
     char localtime[20];
     format_time(localtime);
 
-    va_list args;
-    va_start(args, format);
     char buf[MAX_LOG_BUF];
     vsprintf(buf, format, args);
-    va_end(args);
 
     switch (level) {
         case DEBUG:
@@ -96,30 +93,53 @@ static void commit_log(enum LogLevel level, const char *format, ...)
 
 void debug(const char *format, ...)
 {
-    commit_log(DEBUG, format);
+    va_list args;
+    va_start(args, format);
+    commit_log(DEBUG, format, args);
+    va_end(args);
 }
 
 void info(const char *format, ...)
 {
-    commit_log(INFO, format);
+    va_list args;
+    va_start(args, format);
+    commit_log(INFO, format, args);
+    va_end(args);
 }
 
 void warning(const char *format, ...)
 {
-    commit_log(WARN, format);
+    va_list args;
+    va_start(args, format);
+    commit_log(WARN, format, args);
+    va_end(args);
 }
 
 void error(const char *format, ...)
 {
-    commit_log(ERROR, format);
+    va_list args;
+    va_start(args, format);
+    commit_log(ERROR, format, args);
+    va_end(args);
 }
 
 void fatal(const char *format, ...)
 {
-    commit_log(FATAL, format);
+    va_list args;
+    va_start(args, format);
+    commit_log(FATAL, format, args);
+    va_end(args);
+}
+
+static void kill_logger(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    commit_log(KILL, format, args);
+    va_end(args);
 }
 
 void free_logger()
 {
-    commit_log(KILL, "正在停止服务器...");
+    kill_logger("正在停止服务器...");
 }
