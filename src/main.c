@@ -1,6 +1,7 @@
 #include "args.h"
 #include "logger.h"
 #include "filerules.h"
+#include "handler.h"
 #include <signal.h>
 
 /// 服务器的配置信息
@@ -30,14 +31,20 @@ static void init()
     // 初始化各个模块
     init_logger();
     init_filerules();
+    init_handler();
 
     // 注册 Ctrl + C 信号处理函数
     signal(SIGINT, graceful_shutdown);
+
+    if (server_config.debug_level >= 1) {
+        info("服务器启动成功");
+    }
 }
 
 static void graceful_shutdown(int sig)
 {
     // 停止各个模块
+    free_handler();
     free_filerules();
 
     // 请最后释放日志系统，因为日志系统运行在主线程

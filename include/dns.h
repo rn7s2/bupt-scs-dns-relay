@@ -5,7 +5,11 @@
 #ifndef BUPT_SCS_DNS_RELAY_DNS_H
 #define BUPT_SCS_DNS_RELAY_DNS_H
 
+#include "handler.h"
+
 #include <stdint.h>
+
+#define MAX_DNSBUF_LEN 512
 
 struct DnsHeader {
     unsigned id: 16;        /* query identification number */
@@ -29,5 +33,7 @@ struct DnsHeader {
     uint16_t nscount;       /* number of authority entries */
     uint16_t arcount;       /* number of resource entries */
 };
+
+void handle_dns_request(struct RequestArgs *args, void *user_data);
 
 #endif //BUPT_SCS_DNS_RELAY_DNS_H

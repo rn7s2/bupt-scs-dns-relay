@@ -3,3 +3,8 @@
 //
 
 #include "dns.h"
+
+void handle_dns_request(struct RequestArgs *args, void *user_data)
+{
+    // TODO 请在这里实现 DNS 请求的处理
+}
