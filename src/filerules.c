@@ -4,10 +4,13 @@
 
 #include <sys/stat.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #include "filerules.h"
 #include "args.h"
 #include "trie.h"
+#include "logger.h"
+#include "util.h"
 
 extern struct Config server_config;
 
@@ -66,17 +69,21 @@ _Noreturn void poll_filerules()
 
         // 如果文件被修改过
         if (current_modify_timestamp != last_modify_timestamp) {
-            // TODO: 读取文件规则至 filerules_back
-            filerules_back = make_trienode(NULL);
+            // 读取文件规则至 filerules_back
+            if (!read_rules_to_trie(&filerules_back)) {
+                // 如果读取失败，清空 filerules_back
+                free_trienode(filerules_back, 1);
+                // 等待一段时间后重试
+                sleep(POLL_INTERVAL / 2);
+                continue;
+            }
 
             // 更新最后修改时间
             last_modify_timestamp = current_modify_timestamp;
 
             // 加锁并交换 filerules 和 filerules_back
             pthread_mutex_lock(&filerules_mutex);
-            FileRules temp = filerules;
-            filerules = filerules_back;
-            filerules_back = temp;
+            swap_ptr(filerules, filerules_back);
             pthread_mutex_unlock(&filerules_mutex);
 
             // 清空 filerules_back
@@ -97,5 +104,32 @@ int match_filerules(struct DnsQuestion *question, struct DnsResource *resource)
     }
     *resource = *result;
     pthread_mutex_unlock(&filerules_mutex);
+    return 1;
+}
+
+int read_rules_to_trie(struct TrieNode **rules)
+{
+    *rules = make_trienode(NULL);
+    struct TrieNode *root = *rules;
+
+    FILE *fp = fopen(server_config.filename, "r");
+    if (fp == NULL) {
+        return 0;
+    }
+
+    char ip[MAX_DOMAIN_LEN], domain[MAX_DOMAIN_LEN], tmp[MAX_DOMAIN_LEN];
+    while ((fscanf(fp, "%s %s", ip, domain) == 2)) {
+        if (inet_pton(AF_INET, ip, tmp) || inet_pton(AF_INET6, ip, tmp)) {
+            root = insert_trie(root, domain, ip);
+        } else {
+            error("Invalid IP address: %s\n", ip);
+            *rules = root;
+            fclose(fp);
+            return 0;
+        }
+    }
+
+    *rules = root;
+    fclose(fp);
     return 1;
 }

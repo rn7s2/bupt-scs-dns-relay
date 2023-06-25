@@ -5,8 +5,8 @@
 #ifndef BUPT_SCS_DNS_RELAY_RULES_H
 #define BUPT_SCS_DNS_RELAY_RULES_H
 
-#define MAX_DOMAIN_LENGTH 256
-#define MAX_IP_LENGTH 16
+#define MAX_DOMAIN_LEN 256
+#define MAX_IP_LEN 16
 
 #include "trie.h"
 
@@ -16,8 +16,8 @@
  * 规则: 域名 -> IP
  */
 struct Rule {
-    char domain[MAX_DOMAIN_LENGTH];
-    char ip[MAX_IP_LENGTH];
+    char domain[MAX_DOMAIN_LEN];
+    char ip[MAX_IP_LEN];
 };
 
 /**

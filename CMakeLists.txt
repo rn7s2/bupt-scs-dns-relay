@@ -17,7 +17,6 @@ set(SOURCE
         src/cache.c include/cache.h
         src/filerules.c include/filerules.h
         src/handler.c include/handler.h
-        src/request.c include/request.h
         src/dns.c include/dns.h
         src/logger.c include/logger.h
         src/util.c include/util.h
