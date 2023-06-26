@@ -148,20 +148,37 @@ int dns_parse_questions(char *buf, struct DnsQuestion questions[])
     return offset;
 }
 
+int dns_qname_compressed(char count_char)
+{
+    // 高两位为 1 则为压缩的域名
+    return (count_char & 0xc0) == 0xc0;
+}
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
 int dns_parse_qname(const char *buf, int offset, char *qname)
 {
     int i = 0;
     while (buf[offset] != 0) {
-        int len = (unsigned char) buf[offset];
-        for (int j = 0; j < len; j++) {
-            qname[i++] = buf[offset + j + 1];
+        if (dns_qname_compressed(buf[offset])) {
+            // 取后 14 位，即相对 buf 的偏移量
+            int new_offset = ntohs(*(uint16_t *) (buf + offset)) & 0x3fff;
+            // 递归解析
+            dns_parse_qname(buf, new_offset, qname + i);
+            return offset + 2;
+        } else {
+            int len = (unsigned char) buf[offset];
+            for (int j = 0; j < len; j++) {
+                qname[i++] = buf[offset + j + 1];
+            }
+            qname[i++] = '.';
+            offset += len + 1;
         }
-        qname[i++] = '.';
-        offset += len + 1;
     }
     qname[i - 1] = '\0';
     return offset + 1;
 }
+#pragma clang diagnostic pop
 
 void dns_question_dump(struct DnsQuestion *question)
 {
@@ -225,21 +242,20 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
         offset += sizeof(uint16_t);
         switch (answer->resources[i].type) {
             case A:
-                inet_ntop(AF_INET, packet + offset, (char *) &(answer->resources[i].rdata.A.addr), INET_ADDRSTRLEN);
+                answer->resources[i].rdata.A.addr = *(uint32_t *) (packet + offset);
                 offset += sizeof(uint32_t);
                 break;
             case AAAA:
-                inet_ntop(AF_INET6, packet + offset, (char *) &(answer->resources[i].rdata.AAAA.addr),
-                          INET6_ADDRSTRLEN);
-                offset += sizeof(uint32_t) * 4;
+                memcpy(answer->resources[i].rdata.AAAA.addr, packet + offset, sizeof(uint8_t) * 16);
+                offset += sizeof(uint8_t) * 16;
                 break;
             case CNAME:
-                offset += dns_parse_qname(packet, offset, answer->resources[i].rdata.CNAME.cname);
+                offset = dns_parse_qname(packet, offset, answer->resources[i].rdata.CNAME.cname);
                 break;
             case MX:
-                answer->resources[i].rdata.MX.preference = ntohs(*(uint16_t *) (packet + offset));
+                answer->resources[i].rdata.MX.preference = *(uint16_t *) (packet + offset);
                 offset += sizeof(uint16_t);
-                offset += dns_parse_qname(packet, offset, answer->resources[i].rdata.MX.mxname);
+                offset = dns_parse_qname(packet, offset, answer->resources[i].rdata.MX.mxname);
                 break;
             default:
                 error("未知的 DNS 类型: %d", answer->resources[i].type);
@@ -361,12 +377,12 @@ int dns_answer_to_resource_record(struct DnsAnswer *reply, char *buf)
         offset += sizeof(uint16_t);
         switch (reply->resources[i].type) {
             case A:
-                *(uint32_t *) (buf + offset) = *(uint32_t *) &(reply->resources[i].rdata.A.addr);
+                *(uint32_t *) (buf + offset) = reply->resources[i].rdata.A.addr;
                 offset += sizeof(uint32_t);
                 break;
             case AAAA:
-                *(uint32_t *) (buf + offset) = *(uint32_t *) &(reply->resources[i].rdata.AAAA.addr);
-                offset += sizeof(uint32_t) * 4;
+                memcpy(buf + offset, reply->resources[i].rdata.AAAA.addr, sizeof(uint8_t) * 16);
+                offset += sizeof(uint8_t) * 16;
                 break;
             case CNAME:
                 offset += dns_to_qname(reply->resources[i].rdata.CNAME.cname, buf + offset);

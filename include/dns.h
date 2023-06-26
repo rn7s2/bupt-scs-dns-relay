@@ -128,6 +128,13 @@ void dns_header_dump(struct DnsHeader *header);
 int dns_parse_questions(char *buf, struct DnsQuestion questions[]);
 
 /**
+ * 判断 DNS 报文中的名称是否压缩
+ * @param count_char 名称的第一个计数字节
+ * @return 1 为压缩的，0 为非压缩的
+ */
+int dns_qname_compressed(char count_char);
+
+/**
  * 解析 DNS 报文的名称格式
  * @param buf DNS 报文
  * @param offset 偏移量
