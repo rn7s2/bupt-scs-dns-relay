@@ -88,10 +88,12 @@ struct DnsResource {
  * DNS 回答
  */
 struct DnsAnswer {
-    int size;
+    int ttl;
+    int size; // 包含的资源记录数
+    int packet_len; // buf 的长度
     time_t cached_time;
     char qname[MAX_DOMAIN_LEN];
-    struct DnsResource resources[0];
+    char buf[MAX_DNSBUF_LEN];
 };
 
 void init_id();
@@ -150,7 +152,7 @@ void dns_question_dump(struct DnsQuestion *question);
  * @param question
  * @return 失败为 NULL
  */
-struct DnsAnswer * dns_query(struct DnsQuestion *question);
+struct DnsAnswer *dns_query(struct DnsQuestion *question);
 
 /**
  * 将 question 转换构造为 DNS 报文
@@ -159,7 +161,7 @@ struct DnsAnswer * dns_query(struct DnsQuestion *question);
  * @param packet_len 保存的报文长度
  * @return 报文的 ID
  */
-uint16_t dns_query_buf_new(struct DnsQuestion *question, char *buf, int* packet_len);
+uint16_t dns_query_buf_new(struct DnsQuestion *question, char *buf, int *packet_len);
 
 /**
  * 将域名转换为 DNS 报文中的名称格式
@@ -179,11 +181,11 @@ struct DnsAnswer *dns_resolve(struct DnsQuestion *question);
 // void dns_answer_dump(struct DnsAnswer *reply);
 
 /**
- * 将 DNS 回答转换为 DNS 报文，写入 buf 中
- * @param reply
+ * 将一条 DNS 资源记录转换为 DNS 报文，写入 buf 中
+ * @param resource
  * @param buf
  * @return 写入后相对 buf 的偏移量
  */
-int dns_answer_to_resource_record(struct DnsAnswer *reply, char *buf);
+int dns_resource_to_buf(struct DnsResource* resource, char *buf);
 
 #endif //BUPT_SCS_DNS_RELAY_DNS_H

@@ -63,7 +63,8 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
             // TODO 处理解析失败的情况
 
             // dns_reply_dump(&reply);
-            offset += dns_answer_to_resource_record(reply, reply_buf + offset);
+            memcpy(reply_buf + offset, reply->buf, reply->packet_len);
+            offset += reply->packet_len;
             reply_header->ancount += reply->size;
             free(reply);
             // 若长度大于512则丢弃
@@ -156,6 +157,7 @@ int dns_qname_compressed(char count_char)
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "misc-no-recursion"
+
 int dns_parse_qname(const char *buf, int offset, char *qname)
 {
     int i = 0;
@@ -178,6 +180,7 @@ int dns_parse_qname(const char *buf, int offset, char *qname)
     qname[i - 1] = '\0';
     return offset + 1;
 }
+
 #pragma clang diagnostic pop
 
 void dns_question_dump(struct DnsQuestion *question)
@@ -207,8 +210,9 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
     tv.tv_usec = 10000000; // TODO 改为计算出的 RTO (重传超时时间)
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
+    int n;
     try_recv:
-    if (recvfrom(sockfd, packet, sizeof packet, 0, NULL, NULL) < 0) {
+    if ((n = (int) recvfrom(sockfd, packet, sizeof packet, 0, NULL, NULL)) < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) { // 接收超时
             if (server_config.debug_level >= 2) {
                 warning("TIMEOUT: server query id = %d", qid);
@@ -223,46 +227,48 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
         goto try_recv; // 丢弃不属于这次 DNS 请求的响应包
     }
 
-    // 解析 DNS 响应包
-    size_t len = sizeof(struct DnsAnswer) + header->ancount * sizeof(struct DnsResource);
-    struct DnsAnswer *answer = malloc(len);
-    memset(answer, 0, len);
-    int offset = packet_len;
+    // 保存 DNS 响应包
+    struct DnsAnswer *answer = malloc(sizeof(struct DnsAnswer));
     strcpy(answer->qname, question->qname);
     answer->cached_time = time(NULL);
+    answer->packet_len = n - packet_len;
+    answer->size = header->ancount;
+    memcpy(answer->buf, packet + packet_len, n - packet_len);
+
+    // 解析 DNS 响应包，计算本条查询结果的 TTL
+    int offset = packet_len;
+    uint32_t min_ttl = 0x7fffffff; // 答案的最小 TTL 作为本条查询结果的 TTL
+    char tmp[MAX_DOMAIN_LEN]; // 临时 buf, 用于存储解析到的各种 name
     for (int i = 0; i < header->ancount; i++) {
-        offset = dns_parse_qname(packet, offset, answer->resources[i].name);
-        answer->resources[i].type = ntohs(*(uint16_t *) (packet + offset));
+        offset = dns_parse_qname(packet, offset, tmp);
+        uint16_t type = ntohs(*(uint16_t *) (packet + offset));
         offset += sizeof(uint16_t);
-        answer->resources[i].class = ntohs(*(uint16_t *) (packet + offset));
         offset += sizeof(uint16_t);
-        answer->resources[i].ttl = ntohl(*(uint32_t *) (packet + offset));
+        uint32_t ttl = ntohl(*(uint32_t *) (packet + offset));
+        min_ttl = (min_ttl < ttl ? min_ttl : ttl);
         offset += sizeof(uint32_t);
-        answer->resources[i].rdlength = ntohs(*(uint16_t *) (packet + offset));
         offset += sizeof(uint16_t);
-        switch (answer->resources[i].type) {
+        switch (type) {
             case A:
-                answer->resources[i].rdata.A.addr = *(uint32_t *) (packet + offset);
                 offset += sizeof(uint32_t);
                 break;
             case AAAA:
-                memcpy(answer->resources[i].rdata.AAAA.addr, packet + offset, sizeof(uint8_t) * 16);
                 offset += sizeof(uint8_t) * 16;
                 break;
             case CNAME:
-                offset = dns_parse_qname(packet, offset, answer->resources[i].rdata.CNAME.cname);
+                offset = dns_parse_qname(packet, offset, tmp);
                 break;
             case MX:
-                answer->resources[i].rdata.MX.preference = *(uint16_t *) (packet + offset);
                 offset += sizeof(uint16_t);
-                offset = dns_parse_qname(packet, offset, answer->resources[i].rdata.MX.mxname);
+                offset = dns_parse_qname(packet, offset, tmp);
                 break;
             default:
-                error("未知的 DNS 类型: %d", answer->resources[i].type);
+                error("未知的 DNS 类型: %d", type);
+                free(answer);
                 return NULL;
         }
-        answer->size++;
     }
+    answer->ttl = (int) min_ttl;
     return answer;
 }
 
@@ -326,29 +332,33 @@ int dns_to_qname(const char *name, char *buf)
 struct DnsAnswer *dns_resolve(struct DnsQuestion *question)
 {
     // 1. 访问 DNS 规则文件，如果规则中存在问题的回答，直接返回
-    struct DnsAnswer *answer = malloc(sizeof(struct DnsAnswer) + sizeof(struct DnsResource));
-    if (match_filerules(question, (struct DnsResource *) (answer + sizeof(struct DnsAnswer)))) {
+    struct DnsResource *resource = malloc(sizeof(struct DnsResource));
+    if (match_filerules(question, resource)) {
+        // 根据 resource 构建 answer
+        struct DnsAnswer *answer = malloc(sizeof(struct DnsAnswer));
         answer->size = 1;
-        strcpy(answer->qname, question->qname);
-        answer->cached_time = 0;
+        answer->ttl = (int) resource->ttl;
+        strcpy(answer->qname, resource->name);
+        answer->cached_time = time(NULL);
+        answer->packet_len = dns_resource_to_buf(resource, answer->buf);
+        free(resource);
         return answer;
     } else {
-        free(answer);
+        free(resource);
     }
 
     // 2. 访问 Cache, 如果 Cache 中存在问题的回答并且未过期，直接返回
+    struct DnsAnswer *answer;
     if ((answer = match_cacherules(question))) {
         return answer;
     }
 
     // 3. 如果缓存未命中，向 DNS 服务器发送查询请求，获取响应
-    // TODO 处理 AA (authoritative answer)
     if ((answer = dns_query(question))) {
         // 将响应写入 Cache
         // 复制一份 answer, 因为返回的 answer 会被释放
-        size_t len = sizeof(struct DnsAnswer) + answer->size * sizeof(struct DnsResource);
-        struct DnsAnswer *copy = malloc(len);
-        memcpy(copy, answer, len);
+        struct DnsAnswer *copy = malloc(sizeof(struct DnsAnswer));
+        memcpy(copy, answer, sizeof(struct DnsAnswer));
         insert_cache(question, copy);
         return answer;
     }
@@ -362,40 +372,38 @@ struct DnsAnswer *dns_resolve(struct DnsQuestion *question)
 //    // TODO
 //}
 
-int dns_answer_to_resource_record(struct DnsAnswer *reply, char *buf)
+int dns_resource_to_buf(struct DnsResource *resource, char *buf)
 {
     int offset = 0;
-    for (int i = 0; i < reply->size; i++) {
-        offset += dns_to_qname(reply->qname, buf + offset);
-        *(uint16_t *) (buf + offset) = htons(reply->resources[i].type);
-        offset += sizeof(uint16_t);
-        *(uint16_t *) (buf + offset) = htons(reply->resources[i].class);
-        offset += sizeof(uint16_t);
-        *(uint32_t *) (buf + offset) = htonl(reply->resources[i].ttl);
-        offset += sizeof(uint32_t);
-        *(uint16_t *) (buf + offset) = htons(reply->resources[i].rdlength);
-        offset += sizeof(uint16_t);
-        switch (reply->resources[i].type) {
-            case A:
-                *(uint32_t *) (buf + offset) = reply->resources[i].rdata.A.addr;
-                offset += sizeof(uint32_t);
-                break;
-            case AAAA:
-                memcpy(buf + offset, reply->resources[i].rdata.AAAA.addr, sizeof(uint8_t) * 16);
-                offset += sizeof(uint8_t) * 16;
-                break;
-            case CNAME:
-                offset += dns_to_qname(reply->resources[i].rdata.CNAME.cname, buf + offset);
-                break;
-            case MX:
-                *(uint16_t *) (buf + offset) = htons(reply->resources[i].rdata.MX.preference);
-                offset += sizeof(uint16_t);
-                offset += dns_to_qname(reply->resources[i].rdata.MX.mxname, buf + offset);
-                break;
-            default:
-                fatal("未知的 DNS 类型: %d", reply->resources[i].type);
-                exit(-1);
-        }
+    offset += dns_to_qname(resource->name, buf + offset);
+    *(uint16_t *) (buf + offset) = htons(resource->type);
+    offset += sizeof(uint16_t);
+    *(uint16_t *) (buf + offset) = htons(resource->class);
+    offset += sizeof(uint16_t);
+    *(uint32_t *) (buf + offset) = htonl(resource->ttl);
+    offset += sizeof(uint32_t);
+    *(uint16_t *) (buf + offset) = htons(resource->rdlength);
+    offset += sizeof(uint16_t);
+    switch (resource->type) {
+        case A:
+            *(uint32_t *) (buf + offset) = resource->rdata.A.addr;
+            offset += sizeof(uint32_t);
+            break;
+        case AAAA:
+            memcpy(buf + offset, resource->rdata.AAAA.addr, sizeof(uint8_t) * 16);
+            offset += sizeof(uint8_t) * 16;
+            break;
+        case CNAME:
+            offset += dns_to_qname(resource->rdata.CNAME.cname, buf + offset);
+            break;
+        case MX:
+            *(uint16_t *) (buf + offset) = htons(resource->rdata.MX.preference);
+            offset += sizeof(uint16_t);
+            offset += dns_to_qname(resource->rdata.MX.mxname, buf + offset);
+            break;
+        default:
+            fatal("未知的 DNS 类型: %d", resource->type);
+            exit(-1);
     }
     return offset;
 }

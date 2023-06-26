@@ -42,14 +42,7 @@ struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
     struct DnsAnswer *cached_record = search_trie(cache.root, question->qname);
     if (cached_record != NULL) {
         // 判断是否存在记录超时
-        int timeout = 0;
-        time_t now = time(NULL);
-        for (int i = 0; i < cached_record->size; i++) {
-            if (cached_record->resources[i].ttl + cached_record->cached_time > now) {
-                timeout = 1;
-                break;
-            }
-        }
+        int timeout = (cached_record->cached_time + cached_record->ttl > time(NULL));
         if (!timeout) { // 如果缓存未超时，则返回成功
             // 将这条缓存移动到链表的最前面 (最前为 MRU, 最后为 LRU)
             GList *cached_resource_link = g_list_find(cache.cache_mru_first, cached_record);
@@ -57,9 +50,8 @@ struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
             cache.cache_mru_first = g_list_prepend(cache.cache_mru_first, cached_resource_link);
 
             // 返回缓存的副本以避免多线程冲突
-            size_t len = sizeof(struct DnsAnswer) + cached_record->size * sizeof(struct DnsResource);
-            struct DnsAnswer *ret_copy = malloc(len);
-            memcpy(ret_copy, cached_record, len);
+            struct DnsAnswer *ret_copy = malloc(sizeof(struct DnsAnswer));
+            memcpy(ret_copy, cached_record, sizeof(struct DnsAnswer));
             pthread_mutex_unlock(&cache_mutex);
             return ret_copy;
         } else { // 如果超过 TTL, 先移出 Cache
