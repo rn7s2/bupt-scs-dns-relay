@@ -11,6 +11,7 @@
 #include "util.h"
 #include "logger.h"
 #include "dns.h"
+#include "thpool.h"
 
 extern struct Config server_config;
 
@@ -18,7 +19,7 @@ extern struct Config server_config;
 static pthread_t handler_thread;
 
 /// 用于处理 DNS 请求的线程池
-static GThreadPool *worker_pool;
+static threadpool worker_pool;
 
 void init_handler()
 {
@@ -26,13 +27,15 @@ void init_handler()
     // 线程池中的最合理线程数为 CPU 核心数 + 1
     // 但是由于程序日志系统、DNS 规则文件轮询系统、RTT 检测系统占用了 3 个线程
     // 所以此处线程池中分配为 CPU 核心数 - 2
-    worker_pool = g_thread_pool_new((GFunc) handle_dns_request, NULL,
-                                    get_cpu_num() - 2, TRUE, NULL);
+
+    worker_pool = thpool_init(get_cpu_num() - 2);
     pthread_create(&handler_thread, NULL, (void *(*)(void *)) run_handler, NULL);
 }
 
 void run_handler()
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_DEFERRED, NULL);
+
     // 分别创建 IPv4 和 IPv6 的 UDP socket
     int sockfd, sockfd6;
     struct sockaddr_in server_addr, client_addr;
@@ -74,6 +77,8 @@ void run_handler()
 
     FD_ZERO(&rset);
     while (1) {
+        pthread_testcancel();
+
         // 使用 select 进行 I/O 复用，当 IPv4 或 IPv6 socket 接到请求时，将其读取
         FD_SET(sockfd, &rset);
         FD_SET(sockfd6, &rset);
@@ -100,7 +105,7 @@ void run_handler()
             args->n = n;
 
             // 将请求交给线程池处理
-            g_thread_pool_push(worker_pool, args, NULL);
+            thpool_add_work(worker_pool, (void (*)(void *)) handle_dns_request, args);
         }
 
         // IPv6 socket 有数据到达
@@ -123,7 +128,7 @@ void run_handler()
             args->n = n;
 
             // 将请求交给线程池处理
-            g_thread_pool_push(worker_pool, args, NULL);
+            thpool_add_work(worker_pool, (void (*)(void *)) handle_dns_request, args);
         }
     }
 }
@@ -135,5 +140,6 @@ void free_handler()
     pthread_join(handler_thread, NULL);
 
     // 然后释放线程池 worker_pool
-    g_thread_pool_free(worker_pool, FALSE, TRUE);
+    thpool_wait(worker_pool);
+    thpool_destroy(worker_pool);
 }
