@@ -210,7 +210,7 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
     size_t len = sizeof(struct DnsAnswer) + header->ancount * sizeof(struct DnsResource);
     struct DnsAnswer *answer = malloc(len);
     memset(answer, 0, len);
-    int offset = sizeof(struct DnsHeader);
+    int offset = packet_len;
     strcpy(answer->qname, question->qname);
     answer->cached_time = time(NULL);
     for (int i = 0; i < header->ancount; i++) {
