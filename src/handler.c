@@ -126,7 +126,7 @@ void run_handler()
             }
 
             struct RequestArgs *args = malloc(sizeof(struct RequestArgs));
-            args->sockfd = sockfd;
+            args->sockfd = sockfd6;
             memcpy(&args->client_addr, &client_addr6, client_addr6_len);
             args->buf = (char *) malloc(sizeof(char) * n);
             memcpy(args->buf, buf, n);
