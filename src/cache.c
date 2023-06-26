@@ -43,7 +43,7 @@ struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
     if (cached_record_cell != NULL) {
         // 判断是否存在记录超时
         struct DnsAnswer *cached_record = cached_record_cell->data;
-        int timeout = (cached_record->cached_time + cached_record->ttl > time(NULL));
+        int timeout = (cached_record->cached_time + cached_record->ttl <= time(NULL));
         if (!timeout) { // 如果缓存未超时，则返回成功
             // 将这条缓存移动到链表的最前面 (最前为 MRU, 最后为 LRU)
             cache.cache_mru_first = g_list_remove_link(cache.cache_mru_first, cached_record_cell);
@@ -55,6 +55,7 @@ struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
             pthread_mutex_unlock(&cache_mutex);
             return ret_copy;
         } else { // 如果超过 TTL, 先移出 Cache
+            --cache.cached;
             cache.root = delete_trie(cache.root, question->qname, 0);
             free(cached_record);
             cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, cached_record_cell);
