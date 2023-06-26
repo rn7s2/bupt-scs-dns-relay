@@ -282,8 +282,7 @@ uint16_t dns_query_buf_new(struct DnsQuestion *question, char *buf, int *packet_
     offset += sizeof(uint16_t);
     *(uint16_t *) (buf + offset) = htons(question->qclass);
     offset += sizeof(uint16_t);
-    buf[offset] = '\0';
-    *packet_len = offset + 1;
+    *packet_len = offset;
 
     return qid;
 }
