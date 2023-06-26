@@ -55,25 +55,56 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
         // 分配DNS响应缓冲区,并复制原始请求
         char reply_buf[MAX_DNSBUF_LEN] = {0};
         memcpy(reply_buf, args->buf, offset);
+
         struct DnsHeader *reply_header = (struct DnsHeader *) reply_buf;
         reply_header->qr = 1; // 将回答标记置为 1
+
         // 对每个问题记录进行域名解析,获取响应
+        GList *answers = NULL;
         for (int i = 0; i < header->qdcount; i++) {
             struct DnsAnswer *reply = dns_resolve(&questions[i]);
             // TODO 处理解析失败的情况
-
             // dns_reply_dump(&reply);
-            memcpy(reply_buf + offset, reply->buf, reply->packet_len);
-            offset += reply->packet_len;
-            reply_header->ancount += reply->size;
-            free(reply);
-            // 若长度大于512则丢弃
+            answers = g_list_append(answers, reply);
+            header->ancount += reply->answer_rr;
+            header->nscount += reply->authority_rr;
+        }
+
+        // 填写 Answer RR 部分
+        GList *head = answers;
+        while (head != NULL) {
+            struct DnsAnswer *reply = head->data;
+            if (reply->answer_rr >= 0) {
+                memcpy(reply_buf + offset, reply->answer_buf, reply->answer_buf_len);
+                offset += reply->answer_buf_len;
+            }
             if (offset > 512) {
+                g_list_free_full(answers, free);
                 free(args->buf);
                 free(args);
                 return;
             }
+            head = g_list_next(head);
         }
+
+        // 填写 Authority RR 部分
+        head = answers;
+        while (head != NULL) {
+            struct DnsAnswer *reply = head->data;
+            if (reply->authority_rr >= 0) {
+                memcpy(reply_buf + offset, reply->authority_buf, reply->authority_buf_len);
+                offset += reply->authority_buf_len;
+            }
+            if (offset > 512) {
+                g_list_free_full(answers, free);
+                free(args->buf);
+                free(args);
+                return;
+            }
+            head = g_list_next(head);
+        }
+        g_list_free_full(answers, free);
+
         // 将响应头部转换为网络字节序
         dns_header_htons(reply_header);
 
@@ -230,15 +261,16 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
     // 保存 DNS 响应包
     struct DnsAnswer *answer = malloc(sizeof(struct DnsAnswer));
     strcpy(answer->qname, question->qname);
+    answer->answer_rr = header->ancount;
+    answer->authority_rr = header->nscount;
     answer->cached_time = time(NULL);
-    answer->packet_len = n - packet_len;
-    answer->size = header->ancount;
-    memcpy(answer->buf, packet + packet_len, n - packet_len);
 
-    // 解析 DNS 响应包，计算本条查询结果的 TTL
+    // 解析 DNS 响应包中各个 RR，计算本条查询结果的 TTL
     int offset = packet_len;
     uint32_t min_ttl = 0x7fffffff; // 答案的最小 TTL 作为本条查询结果的 TTL
     char tmp[MAX_DOMAIN_LEN]; // 临时 buf, 用于存储解析到的各种 name
+
+    // 解析 DNS 响应包中的 Answer RR
     for (int i = 0; i < header->ancount; i++) {
         offset = dns_parse_qname(packet, offset, tmp);
         uint16_t type = ntohs(*(uint16_t *) (packet + offset));
@@ -268,6 +300,38 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
                 return NULL;
         }
     }
+    answer->answer_buf_len = offset - packet_len;
+    memcpy(answer->answer_buf, packet + packet_len, answer->answer_buf_len);
+
+    // 解析 DNS 响应包中的 Authority RR
+    answer->authority_buf_len = n - offset;
+    memcpy(answer->authority_buf, packet + offset, answer->authority_buf_len);
+    for (int i = 0; i < header->nscount; i++) {
+        offset = dns_parse_qname(packet, offset, tmp);
+        offset += sizeof(uint16_t);
+        offset += sizeof(uint16_t);
+        uint32_t ttl = ntohl(*(uint32_t *) (packet + offset));
+        min_ttl = (min_ttl < ttl ? min_ttl : ttl);
+        offset += sizeof(uint32_t);
+        offset += sizeof(uint16_t);
+
+        // 跳过 Authority RR 的 RDATA 部分
+        // Primary name server
+        offset = dns_parse_qname(packet, offset, tmp);
+        // Responsible authority's mailbox
+        offset = dns_parse_qname(packet, offset, tmp);
+        // Serial number
+        offset += sizeof(uint32_t);
+        // Refresh interval
+        offset += sizeof(uint32_t);
+        // Retry interval
+        offset += sizeof(uint32_t);
+        // Expiration limit
+        offset += sizeof(uint32_t);
+        // Minimum TTL
+        offset += sizeof(uint32_t);
+    }
+
     answer->ttl = (int) min_ttl;
     return answer;
 }
@@ -336,11 +400,11 @@ struct DnsAnswer *dns_resolve(struct DnsQuestion *question)
     if (match_filerules(question, resource)) {
         // 根据 resource 构建 answer
         struct DnsAnswer *answer = malloc(sizeof(struct DnsAnswer));
-        answer->size = 1;
+        answer->answer_rr = 1, answer->authority_rr = 0;
         answer->ttl = (int) resource->ttl;
         strcpy(answer->qname, resource->name);
         answer->cached_time = time(NULL);
-        answer->packet_len = dns_resource_to_buf(resource, answer->buf);
+        answer->answer_buf_len = dns_resource_to_buf(resource, answer->answer_buf);
         free(resource);
         return answer;
     } else {

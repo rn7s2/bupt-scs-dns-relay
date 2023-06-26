@@ -89,11 +89,12 @@ struct DnsResource {
  */
 struct DnsAnswer {
     int ttl;
-    int size; // 包含的资源记录数
-    int packet_len; // buf 的长度
+    int answer_rr, authority_rr;         // 包含的资源记录数
+    int answer_buf_len, authority_buf_len; // buf 的长度
     time_t cached_time;
     char qname[MAX_DOMAIN_LEN];
-    char buf[MAX_DNSBUF_LEN];
+    char answer_buf[MAX_DNSBUF_LEN];
+    char authority_buf[MAX_DNSBUF_LEN];
 };
 
 void init_id();
@@ -186,6 +187,6 @@ struct DnsAnswer *dns_resolve(struct DnsQuestion *question);
  * @param buf
  * @return 写入后相对 buf 的偏移量
  */
-int dns_resource_to_buf(struct DnsResource* resource, char *buf);
+int dns_resource_to_buf(struct DnsResource *resource, char *buf);
 
 #endif //BUPT_SCS_DNS_RELAY_DNS_H
