@@ -61,20 +61,20 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
 
         // 对每个问题记录进行域名解析,获取响应
         GList *answers = NULL;
-        for (int i = 0; i < header->qdcount; i++) {
+        for (int i = 0; i < reply_header->qdcount; i++) {
             struct DnsAnswer *reply = dns_resolve(&questions[i]);
             // TODO 处理解析失败的情况
             // dns_reply_dump(&reply);
             answers = g_list_append(answers, reply);
-            header->ancount += reply->answer_rr;
-            header->nscount += reply->authority_rr;
+            reply_header->ancount += reply->answer_rr;
+            reply_header->nscount += reply->authority_rr;
         }
 
         // 填写 Answer RR 部分
         GList *head = answers;
         while (head != NULL) {
             struct DnsAnswer *reply = head->data;
-            if (reply->answer_rr >= 0) {
+            if (reply->answer_rr > 0) {
                 memcpy(reply_buf + offset, reply->answer_buf, reply->answer_buf_len);
                 offset += reply->answer_buf_len;
             }
@@ -91,7 +91,7 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
         head = answers;
         while (head != NULL) {
             struct DnsAnswer *reply = head->data;
-            if (reply->authority_rr >= 0) {
+            if (reply->authority_rr > 0) {
                 memcpy(reply_buf + offset, reply->authority_buf, reply->authority_buf_len);
                 offset += reply->authority_buf_len;
             }
@@ -300,12 +300,16 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
                 return NULL;
         }
     }
-    answer->answer_buf_len = offset - packet_len;
-    memcpy(answer->answer_buf, packet + packet_len, answer->answer_buf_len);
+    if (offset > packet_len) {
+        answer->answer_buf_len = offset - packet_len;
+        memcpy(answer->answer_buf, packet + packet_len, answer->answer_buf_len);
+    }
 
     // 解析 DNS 响应包中的 Authority RR
-    answer->authority_buf_len = n - offset;
-    memcpy(answer->authority_buf, packet + offset, answer->authority_buf_len);
+    if (n > offset) {
+        answer->authority_buf_len = n - offset;
+        memcpy(answer->authority_buf, packet + offset, answer->authority_buf_len);
+    }
     for (int i = 0; i < header->nscount; i++) {
         offset = dns_parse_qname(packet, offset, tmp);
         offset += sizeof(uint16_t);
