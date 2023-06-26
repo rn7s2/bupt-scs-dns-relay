@@ -20,8 +20,7 @@ set(SOURCE
         src/dns.c include/dns.h
         src/logger.c include/logger.h
         src/util.c include/util.h
-        src/trie.c include/trie.h
-        3rd-party/thpool/thpool.c 3rd-party/thpool/thpool.h)
+        src/trie.c include/trie.h)
 add_executable(bupt-scs-dns-relay ${SOURCE})
 
 target_link_libraries(bupt-scs-dns-relay PkgConfig::deps)
@@ -30,4 +29,3 @@ add_subdirectory(3rd-party/cargs)
 target_link_libraries(bupt-scs-dns-relay cargs)
 
 target_include_directories(bupt-scs-dns-relay PRIVATE include)
-target_include_directories(bupt-scs-dns-relay PRIVATE 3rd-party/thpool)
