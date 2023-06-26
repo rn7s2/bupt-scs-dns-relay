@@ -3,6 +3,7 @@
 //
 
 #include <memory.h>
+#include <stdlib.h>
 #include <string.h>
 #include "cache.h"
 #include "trie.h"

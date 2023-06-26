@@ -191,7 +191,7 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     try_recv:
-    if (recvfrom(sockfd, packet, sizeof packet, MSG_WAITALL, NULL, NULL) < 0) {
+    if (recvfrom(sockfd, packet, sizeof packet, 0, NULL, NULL) < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) { // 接收超时
             if (server_config.debug_level >= 2) {
                 warning("TIMEOUT: server query id = %d", qid);

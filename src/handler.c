@@ -84,7 +84,7 @@ void run_handler()
         if (FD_ISSET(sockfd, &rset)) {
             memset(&client_addr, 0, sizeof(client_addr));
             socklen_t client_addr_len = sizeof(client_addr);
-            n = (int) recvfrom(sockfd, buf, sizeof(buf), MSG_WAITALL,
+            n = (int) recvfrom(sockfd, buf, sizeof(buf), 0,
                                (struct sockaddr *) &client_addr,
                                &client_addr_len);
             if (n < 0) {
@@ -107,7 +107,7 @@ void run_handler()
         if (FD_ISSET(sockfd6, &rset)) {
             memset(&client_addr6, 0, sizeof(client_addr6));
             socklen_t client_addr6_len = sizeof(client_addr6);
-            n = (int) recvfrom(sockfd6, buf, sizeof(buf), MSG_WAITALL,
+            n = (int) recvfrom(sockfd6, buf, sizeof(buf), 0,
                                (struct sockaddr *) &client_addr6,
                                &client_addr6_len);
             if (n < 0) {
