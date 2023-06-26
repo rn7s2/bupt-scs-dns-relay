@@ -149,9 +149,10 @@ struct DnsAnswer * dns_query(struct DnsQuestion *question);
  * 将 question 转换构造为 DNS 报文
  * @param question
  * @param buf 保存报文的 buffer
+ * @param packet_len 保存的报文长度
  * @return 报文的 ID
  */
-uint16_t dns_query_buf_new(struct DnsQuestion *question, char *buf);
+uint16_t dns_query_buf_new(struct DnsQuestion *question, char *buf, int* packet_len);
 
 /**
  * 将域名转换为 DNS 报文中的名称格式

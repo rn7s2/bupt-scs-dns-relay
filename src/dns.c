@@ -55,14 +55,16 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
         // 分配DNS响应缓冲区,并复制原始请求
         char reply_buf[MAX_DNSBUF_LEN] = {0};
         memcpy(reply_buf, args->buf, offset);
-        ((struct DnsHeader *) reply_buf)->qr = 1; // 将回答标记置为 1
+        struct DnsHeader *reply_header = (struct DnsHeader *) reply_buf;
+        reply_header->qr = 1; // 将回答标记置为 1
         // 对每个问题记录进行域名解析,获取响应
         for (int i = 0; i < header->qdcount; i++) {
             struct DnsAnswer *reply = dns_resolve(&questions[i]);
             // TODO 处理解析失败的情况
 
             // dns_reply_dump(&reply);
-            offset = dns_answer_to_resource_record(reply, reply_buf + offset);
+            offset += dns_answer_to_resource_record(reply, reply_buf + offset);
+            reply_header->ancount += reply->size;
             free(reply);
             // 若长度大于512则丢弃
             if (offset > 512) {
@@ -71,6 +73,8 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
                 return;
             }
         }
+        // 将响应头部转换为网络字节序
+        dns_header_htons(reply_header);
 
         // 将响应sendto给客户端
         socklen_t len;
@@ -168,8 +172,9 @@ void dns_question_dump(struct DnsQuestion *question)
 
 struct DnsAnswer *dns_query(struct DnsQuestion *question)
 {
+    int packet_len;
     char packet[MAX_DNSBUF_LEN];
-    uint16_t qid = dns_query_buf_new(question, packet);
+    uint16_t qid = dns_query_buf_new(question, packet, &packet_len);
 
     struct sockaddr_in server_addr = {0};
     server_addr.sin_family = AF_INET;
@@ -177,7 +182,7 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
     inet_pton(AF_INET, server_config.dns_server_ipaddr, &server_addr.sin_addr.s_addr);
 
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    sendto(sockfd, packet, sizeof packet, MSG_WAITALL,
+    sendto(sockfd, packet, packet_len, MSG_WAITALL,
            (struct sockaddr *) &server_addr, sizeof server_addr);
 
     struct timeval tv;
@@ -245,7 +250,7 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
     return answer;
 }
 
-uint16_t dns_query_buf_new(struct DnsQuestion *question, char *buf)
+uint16_t dns_query_buf_new(struct DnsQuestion *question, char *buf, int *packet_len)
 {
     pthread_mutex_lock(&id_mutex);
     uint16_t qid = id++;
@@ -278,6 +283,7 @@ uint16_t dns_query_buf_new(struct DnsQuestion *question, char *buf)
     *(uint16_t *) (buf + offset) = htons(question->qclass);
     offset += sizeof(uint16_t);
     buf[offset] = '\0';
+    *packet_len = offset + 1;
 
     return qid;
 }
@@ -286,8 +292,11 @@ int dns_to_qname(const char *name, char *buf)
 {
     int len = (int) strlen(name);
     int i = 0, j = 0;
-    while (i < len) {
-        if (name[i] == '.') {
+    while (i <= len) {
+        if (i == len) {
+            buf[j] = (char) (i - j);
+            break;
+        } else if (name[i] == '.') {
             buf[j] = (char) (i - j);
             j = i + 1;
         } else {
