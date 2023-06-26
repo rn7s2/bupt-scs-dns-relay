@@ -56,7 +56,8 @@ struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
             return ret_copy;
         } else { // 如果超过 TTL, 先移出 Cache
             --cache.cached;
-            cache.root = delete_trie(cache.root, question->qname, 0);
+            // 将 Trie 树中对应节点改为 NULL
+            cache.root = insert_trie(cache.root, question->qname, NULL);
             free(cached_record);
             cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, cached_record_cell);
         }
@@ -72,12 +73,12 @@ void insert_cache(struct DnsQuestion *question, struct DnsAnswer *record)
     // 如果 Cache 未满，直接插入
     if (cache.cached < server_config.cache_size) {
         GList *trie_record = search_trie(cache.root, question->qname);
-        if (trie_record != NULL) {
-            // 如果已经存在该记录，先删除
-            cache.root = delete_trie(cache.root, question->qname, 0);
+        if (trie_record != NULL) { // 如果已经存在该记录，先从 Cache 删除
+            --cache.cached;
+            // 将 Trie 树中对应节点改为 NULL
+            cache.root = insert_trie(cache.root, question->qname, NULL);
             free(trie_record->data);
             cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, trie_record);
-            --cache.cached;
         }
         ++cache.cached;
         // 将缓存插入链表头部
@@ -88,7 +89,7 @@ void insert_cache(struct DnsQuestion *question, struct DnsAnswer *record)
         // 从链表尾部取出最久未使用的缓存
         GList *lru_resource_link = g_list_last(cache.cache_mru_first);
         // 从 Trie 中删除该缓存
-        cache.root = delete_trie(cache.root, ((struct DnsAnswer *) lru_resource_link->data)->qname, 0);
+        cache.root = insert_trie(cache.root, ((struct DnsAnswer *) lru_resource_link->data)->qname, NULL);
         // 从链表中删除该缓存
         free(lru_resource_link->data);
         cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, lru_resource_link);

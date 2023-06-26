@@ -54,12 +54,4 @@ struct TrieNode *insert_trie(struct TrieNode *root, const char *word, void *data
  */
 void *search_trie(struct TrieNode *root, const char *word);
 
-/**
- * 从 Trie 中删除一个单词
- * @param root 根节点
- * @param word 要删除的单词
- * @return 删除后的根节点
- */
-struct TrieNode *delete_trie(struct TrieNode *root, const char *word, int free_data);
-
 #endif //BUPT_SCS_DNS_RELAY_TRIE_H
