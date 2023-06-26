@@ -15,10 +15,10 @@
 extern struct Config server_config;
 
 /// 用于接受 UDP 数据包的线程
-pthread_t handler_thread;
+static pthread_t handler_thread;
 
 /// 用于处理 DNS 请求的线程池
-GThreadPool *worker_pool;
+static GThreadPool *worker_pool;
 
 void init_handler()
 {

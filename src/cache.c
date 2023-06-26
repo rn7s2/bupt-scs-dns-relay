@@ -11,10 +11,10 @@
 
 extern struct Config server_config;
 
-struct Cache cache;
+static struct Cache cache;
 
 /// 用于保护 cache 的互斥锁
-pthread_mutex_t cache_mutex;
+static pthread_mutex_t cache_mutex;
 
 void init_cache()
 {
@@ -39,15 +39,15 @@ struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
 {
     pthread_mutex_lock(&cache_mutex);
     // 从缓存中查找，如果找到且未超时，则返回成功
-    struct DnsAnswer *cached_record = search_trie(cache.root, question->qname);
-    if (cached_record != NULL) {
+    GList *cached_record_cell = search_trie(cache.root, question->qname);
+    if (cached_record_cell != NULL) {
         // 判断是否存在记录超时
+        struct DnsAnswer *cached_record = cached_record_cell->data;
         int timeout = (cached_record->cached_time + cached_record->ttl > time(NULL));
         if (!timeout) { // 如果缓存未超时，则返回成功
             // 将这条缓存移动到链表的最前面 (最前为 MRU, 最后为 LRU)
-            GList *cached_resource_link = g_list_find(cache.cache_mru_first, cached_record);
-            cache.cache_mru_first = g_list_remove_link(cache.cache_mru_first, cached_resource_link);
-            cache.cache_mru_first = g_list_prepend(cache.cache_mru_first, cached_resource_link);
+            cache.cache_mru_first = g_list_remove_link(cache.cache_mru_first, cached_record_cell);
+            cache.cache_mru_first = g_list_concat(cached_record_cell, cache.cache_mru_first);
 
             // 返回缓存的副本以避免多线程冲突
             struct DnsAnswer *ret_copy = malloc(sizeof(struct DnsAnswer));
@@ -56,7 +56,8 @@ struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
             return ret_copy;
         } else { // 如果超过 TTL, 先移出 Cache
             cache.root = delete_trie(cache.root, question->qname, 0);
-            cache.cache_mru_first = g_list_remove(cache.cache_mru_first, cached_record);
+            free(cached_record);
+            cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, cached_record_cell);
         }
     }
     // 缓存未命中，返回失败
@@ -69,6 +70,15 @@ void insert_cache(struct DnsQuestion *question, struct DnsAnswer *record)
     pthread_mutex_lock(&cache_mutex);
     // 如果 Cache 未满，直接插入
     if (cache.cached < server_config.cache_size) {
+        GList *trie_record = search_trie(cache.root, question->qname);
+        if (trie_record != NULL) {
+            // 如果已经存在该记录，先删除
+            cache.root = delete_trie(cache.root, question->qname, 0);
+            free(trie_record->data);
+            cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, trie_record);
+            --cache.cached;
+        }
+        ++cache.cached;
         // 将缓存插入链表头部
         cache.cache_mru_first = g_list_insert_before(cache.cache_mru_first, cache.cache_mru_first, record);
         // 将缓存插入 Trie
@@ -79,7 +89,8 @@ void insert_cache(struct DnsQuestion *question, struct DnsAnswer *record)
         // 从 Trie 中删除该缓存
         cache.root = delete_trie(cache.root, ((struct DnsAnswer *) lru_resource_link->data)->qname, 1);
         // 从链表中删除该缓存
-        cache.cache_mru_first = g_list_remove_link(cache.cache_mru_first, lru_resource_link);
+        free(lru_resource_link->data);
+        cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, lru_resource_link);
         // 将新缓存插入链表头部
         cache.cache_mru_first = g_list_insert_before(cache.cache_mru_first, cache.cache_mru_first, record);
         // 将新缓存插入 Trie

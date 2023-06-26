@@ -418,6 +418,8 @@ struct DnsAnswer *dns_resolve(struct DnsQuestion *question)
     // 2. 访问 Cache, 如果 Cache 中存在问题的回答并且未过期，直接返回
     struct DnsAnswer *answer;
     if ((answer = match_cacherules(question))) {
+        struct DnsAnswer *copy = malloc(sizeof(struct DnsAnswer));
+        memcpy(copy, answer, sizeof(struct DnsAnswer));
         return answer;
     }
 
