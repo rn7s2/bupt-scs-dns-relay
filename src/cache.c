@@ -80,19 +80,19 @@ void insert_cache(struct DnsQuestion *question, struct DnsAnswer *record)
         }
         ++cache.cached;
         // 将缓存插入链表头部
-        cache.cache_mru_first = g_list_insert_before(cache.cache_mru_first, cache.cache_mru_first, record);
+        cache.cache_mru_first = g_list_prepend(cache.cache_mru_first, record);
         // 将缓存插入 Trie
         cache.root = insert_trie(cache.root, question->qname, cache.cache_mru_first);
     } else { // 如果缓存已满，使用 LRU 算法替换缓存
         // 从链表尾部取出最久未使用的缓存
         GList *lru_resource_link = g_list_last(cache.cache_mru_first);
         // 从 Trie 中删除该缓存
-        cache.root = delete_trie(cache.root, ((struct DnsAnswer *) lru_resource_link->data)->qname, 1);
+        cache.root = delete_trie(cache.root, ((struct DnsAnswer *) lru_resource_link->data)->qname, 0);
         // 从链表中删除该缓存
         free(lru_resource_link->data);
         cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, lru_resource_link);
         // 将新缓存插入链表头部
-        cache.cache_mru_first = g_list_insert_before(cache.cache_mru_first, cache.cache_mru_first, record);
+        cache.cache_mru_first = g_list_prepend(cache.cache_mru_first, record);
         // 将新缓存插入 Trie
         cache.root = insert_trie(cache.root, question->qname, cache.cache_mru_first);
     }
