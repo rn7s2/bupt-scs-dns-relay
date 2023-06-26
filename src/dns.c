@@ -35,9 +35,7 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
     struct DnsHeader *header = (struct DnsHeader *) args->buf;
     // 网络字节序转为主机字节序
     dns_header_ntohs(header);
-    if (server_config.debug_level >= 2) {
-        dns_header_dump(header);
-    }
+    dns_header_dump(header);
 
     if (header->qr == 0) {
         // 如果是查询请求
@@ -46,9 +44,7 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
         int offset = dns_parse_questions(args->buf, questions);
         for (int i = 0; i < header->qdcount; i++) {
             str_toupper(questions[i].qname);
-            if (server_config.debug_level >= 2) {
-                dns_question_dump(questions + i);
-            }
+            dns_question_dump(header, questions + i);
         }
 
         // 分配DNS响应缓冲区,并复制原始请求
@@ -62,8 +58,10 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
         GList *answers = NULL;
         for (int i = 0; i < reply_header->qdcount; i++) {
             struct DnsAnswer *reply = dns_resolve(&questions[i]);
+
             if (reply == NULL) { // 处理解析失败的情况
-                reply_header->rcode = 1;
+                reply_header->rcode = 3;
+                dns_header_htons(reply_header);
                 socklen_t len;
                 if (args->client_addr.ss_family == AF_INET) {
                     len = sizeof(struct sockaddr_in);
@@ -77,7 +75,6 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
                 return;
             }
 
-            // dns_reply_dump(&reply);
             answers = g_list_append(answers, reply);
             reply_header->ancount += reply->answer_rr;
             reply_header->nscount += reply->authority_rr;
@@ -156,21 +153,9 @@ void dns_header_htons(struct DnsHeader *header)
 
 void dns_header_dump(struct DnsHeader *header)
 {
-    debug("id: %d", header->id);
-    debug("qr: %d", header->qr);
-    debug("opcode: %d", header->opcode);
-    debug("aa: %d", header->aa);
-    debug("tc: %d", header->tc);
-    debug("rd: %d", header->rd);
-    debug("ra: %d", header->ra);
-    debug("z: %d", header->z);
-    debug("ad: %d", header->ad);
-    debug("cd: %d", header->cd);
-    debug("rcode: %d", header->rcode);
-    debug("qdcount: %d", header->qdcount);
-    debug("ancount: %d", header->ancount);
-    debug("nscount: %d", header->nscount);
-    debug("arcount: %d", header->arcount);
+    if (server_config.debug_level >= 2) {
+        debug("QRYDNS, id = %d, qdcount = %d", header->id, header->qdcount);
+    }
 }
 
 int dns_parse_questions(char *buf, struct DnsQuestion questions[])
@@ -227,11 +212,14 @@ int dns_parse_qname(const char *buf, int offset, char *qname)
 
 #pragma clang diagnostic pop
 
-void dns_question_dump(struct DnsQuestion *question)
+void dns_question_dump(struct DnsHeader *header, struct DnsQuestion *question)
 {
-    debug("qname: %s", question->qname);
-    debug("qtype: %d", question->qtype);
-    debug("qclass: %d", question->qclass);
+    if (server_config.debug_level >= 2) {
+        debug("QUERY, id = %d, qname = %s, qtype = %x, qclass = %x",
+              header->id, question->qname, question->qtype, question->qclass);
+    } else if (server_config.debug_level >= 1) {
+        debug("QUERY, id = %d, qname = %s", header->id, question->qname);
+    }
 }
 
 struct DnsAnswer *dns_query(struct DnsQuestion *question)
@@ -249,9 +237,11 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
     sendto(sockfd, packet, packet_len, MSG_WAITALL,
            (struct sockaddr *) &server_addr, sizeof server_addr);
 
+    // TODO 改为单独线程计算出的 RTO (重传超时时间)
+    // 目前暂时使用 7.5s
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 10000000; // TODO 改为计算出的 RTO (重传超时时间)
+    tv.tv_usec = 1000 * 7500;
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     int n;
@@ -414,13 +404,27 @@ struct DnsAnswer *dns_resolve(struct DnsQuestion *question)
 {
     if (question->qtype != A && question->qtype != AAAA
         && question->qtype != CNAME && question->qtype != MX) {
-        warning("不支持的 DNS 查询类型: %d", question->qtype);
+        if (server_config.debug_level >= 2) {
+            warning("不支持的 DNS 查询类型: %d", question->qtype);
+        }
         return NULL;
     }
 
     // 1. 访问 DNS 规则文件，如果规则中存在问题的回答，直接返回
     struct DnsResource *resource = malloc(sizeof(struct DnsResource));
     if (match_filerules(question, resource)) {
+        if (server_config.debug_level >= 2) {
+            debug("FILERULES MATCH: %s", resource->name);
+        }
+
+        if (resource->rdata.A.addr == 0) { // 不良网站拦截
+            if (server_config.debug_level >= 2) {
+                debug("BLOCKED: %s", resource->name);
+            }
+            free(resource);
+            return NULL;
+        }
+
         // 根据 resource 构建 answer
         struct DnsAnswer *answer = malloc(sizeof(struct DnsAnswer));
         answer->answer_rr = 1, answer->authority_rr = 0;
@@ -437,12 +441,20 @@ struct DnsAnswer *dns_resolve(struct DnsQuestion *question)
     // 2. 访问 Cache, 如果 Cache 中存在问题的回答并且未过期，直接返回
     struct DnsAnswer *answer;
     if ((answer = match_cacherules(question))) {
+        if (server_config.debug_level >= 2) {
+            debug("CACHE MATCH: %s", question->qname);
+        }
+
         // Cache 返回的即副本，不需要复制
         return answer;
     }
 
     // 3. 如果缓存未命中，向 DNS 服务器发送查询请求，获取响应
     if ((answer = dns_query(question))) {
+        if (server_config.debug_level >= 2) {
+            debug("RELAY DNS QUERY: %s", question->qname);
+        }
+
         // 将响应写入 Cache
         // 复制一份 answer, 因为返回的 answer 会被释放
         struct DnsAnswer *copy = malloc(sizeof(struct DnsAnswer));
@@ -454,11 +466,6 @@ struct DnsAnswer *dns_resolve(struct DnsQuestion *question)
     // 4. 都不成功，那就返回失败
     return NULL;
 }
-
-//void dns_answer_dump(struct DnsAnswer *reply)
-//{
-//    // TODO
-//}
 
 int dns_resource_to_buf(struct DnsResource *resource, char *buf)
 {

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
+#include <arpa/inet.h>
 #include "handler.h"
 #include "args.h"
 #include "util.h"
@@ -92,6 +93,10 @@ void run_handler()
                 exit(1);
             }
 
+            if (server_config.debug_level >= 2) {
+                debug("RECVREQ from: %s:%d", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+            }
+
             struct RequestArgs *args = malloc(sizeof(struct RequestArgs));
             args->sockfd = sockfd;
             memcpy(&args->client_addr, &client_addr, client_addr_len);
@@ -113,6 +118,11 @@ void run_handler()
             if (n < 0) {
                 fatal("IPv6 socket recvfrom 失败");
                 exit(1);
+            }
+
+            if (server_config.debug_level >= 2) {
+                uint16_t *v6_addr = (uint16_t *) &client_addr6.sin6_addr;
+                debug("RECVREQ from: [%x:%x:%x:%x]:%d", v6_addr[0], v6_addr[1], v6_addr[2], v6_addr[3], ntohs(client_addr6.sin6_port));
             }
 
             struct RequestArgs *args = malloc(sizeof(struct RequestArgs));

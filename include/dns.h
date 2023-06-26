@@ -97,8 +97,10 @@ struct DnsAnswer {
     char authority_buf[MAX_DNSBUF_LEN];
 };
 
+/// 初始化 ID 分配模块
 void init_id();
 
+// 释放 ID 分配模块
 void free_id();
 
 /**
@@ -120,6 +122,10 @@ void dns_header_ntohs(struct DnsHeader *header);
  */
 void dns_header_htons(struct DnsHeader *header);
 
+/**
+ * 打印 DNS 报文头部信息
+ * @param header
+ */
 void dns_header_dump(struct DnsHeader *header);
 
 /**
@@ -146,7 +152,11 @@ int dns_qname_compressed(char count_char);
  */
 int dns_parse_qname(const char *buf, int offset, char *qname);
 
-void dns_question_dump(struct DnsQuestion *question);
+/**
+ * 打印 DNS 报文中的问题部分
+ * @param question
+ */
+void dns_question_dump(struct DnsHeader *header, struct DnsQuestion *question);
 
 /**
  * 根据 question 联系上级 DNS 服务器查询
@@ -178,8 +188,6 @@ int dns_to_qname(const char *name, char *buf);
  * @return NULL 代表解析失败
  */
 struct DnsAnswer *dns_resolve(struct DnsQuestion *question);
-
-// void dns_answer_dump(struct DnsAnswer *reply);
 
 /**
  * 将一条 DNS 资源记录转换为 DNS 报文，写入 buf 中
