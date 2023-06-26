@@ -31,7 +31,6 @@ void free_id()
 
 void handle_dns_request(struct RequestArgs *args, void *user_data)
 {
-    // TODO 请在这里实现 DNS 请求的处理
     // 请求的数据存放在 buf 缓冲区
     struct DnsHeader *header = (struct DnsHeader *) args->buf;
     // 网络字节序转为主机字节序
@@ -63,7 +62,21 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
         GList *answers = NULL;
         for (int i = 0; i < reply_header->qdcount; i++) {
             struct DnsAnswer *reply = dns_resolve(&questions[i]);
-            // TODO 处理解析失败的情况
+            if (reply == NULL) { // 处理解析失败的情况
+                reply_header->rcode = 1;
+                socklen_t len;
+                if (args->client_addr.ss_family == AF_INET) {
+                    len = sizeof(struct sockaddr_in);
+                } else {
+                    len = sizeof(struct sockaddr_in6);
+                }
+                sendto(args->sockfd, reply_buf, offset, 0, (struct sockaddr *) &args->client_addr, len);
+                free(questions);
+                free(args->buf);
+                free(args);
+                return;
+            }
+
             // dns_reply_dump(&reply);
             answers = g_list_append(answers, reply);
             reply_header->ancount += reply->answer_rr;
@@ -399,6 +412,12 @@ int dns_to_qname(const char *name, char *buf)
 
 struct DnsAnswer *dns_resolve(struct DnsQuestion *question)
 {
+    if (question->qtype != A && question->qtype != AAAA
+        && question->qtype != CNAME && question->qtype != MX) {
+        warning("不支持的 DNS 查询类型: %d", question->qtype);
+        return NULL;
+    }
+
     // 1. 访问 DNS 规则文件，如果规则中存在问题的回答，直接返回
     struct DnsResource *resource = malloc(sizeof(struct DnsResource));
     if (match_filerules(question, resource)) {

@@ -5,7 +5,6 @@
 #ifndef BUPT_SCS_DNS_RELAY_FILERULES_H
 #define BUPT_SCS_DNS_RELAY_FILERULES_H
 
-#include "rules.h"
 #include "dns.h"
 
 /// 来自文件的规则列表

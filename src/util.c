@@ -48,10 +48,3 @@ int get_cpu_num()
 {
     return (int) sysconf(_SC_NPROCESSORS_ONLN);
 }
-
-void swap_ptr(void *a, void *b)
-{
-    void *tmp = a;
-    a = b;
-    b = tmp;
-}

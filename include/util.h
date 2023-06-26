@@ -29,11 +29,4 @@ void format_time(char *output);
  */
 int get_cpu_num();
 
-/**
- * 交换指针
- * @param a
- * @param b
- */
-void swap_ptr(void *a, void *b);
-
 #endif //BUPT_SCS_DNS_RELAY_UTIL_H
