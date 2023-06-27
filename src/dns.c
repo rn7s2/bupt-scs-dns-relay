@@ -73,6 +73,8 @@ void handle_dns_request(struct RequestArgs *args, void *user_data)
                 free(args->buf);
                 free(args);
                 return;
+            } else if (reply->answer_rr == 0) {
+                reply_header->rcode = 3;
             }
 
             answers = g_list_append(answers, reply);
