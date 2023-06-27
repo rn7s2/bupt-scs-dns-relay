@@ -38,8 +38,23 @@ void free_cache()
 struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
 {
     pthread_mutex_lock(&cache_mutex);
+
+    char type_and_name[MAX_DOMAIN_LEN];
+    if (question->qtype == A) {
+        sprintf(type_and_name, "0000A%s", question->qname);
+    } else if (question->qtype == AAAA) {
+        sprintf(type_and_name, "0AAAA%s", question->qname);
+    } else if (question->qtype == CNAME) {
+        sprintf(type_and_name, "CNAME%s", question->qname);
+    } else if (question->qtype == MX) {
+        sprintf(type_and_name, "000MX%s", question->qname);
+    } else {
+        pthread_mutex_unlock(&cache_mutex);
+        return NULL;
+    }
+
     // 从缓存中查找，如果找到且未超时，则返回成功
-    GList *cached_record_cell = search_trie(cache.root, question->qname);
+    GList *cached_record_cell = search_trie(cache.root, type_and_name);
     if (cached_record_cell != NULL) {
         // 判断是否存在记录超时
         struct DnsAnswer *cached_record = cached_record_cell->data;
@@ -57,7 +72,7 @@ struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
         } else { // 如果超过 TTL, 先移出 Cache
             --cache.cached;
             // 将 Trie 树中对应节点改为 NULL
-            cache.root = insert_trie(cache.root, question->qname, NULL);
+            cache.root = insert_trie(cache.root, type_and_name, NULL);
             free(cached_record);
             cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, cached_record_cell);
         }
@@ -70,13 +85,28 @@ struct DnsAnswer *match_cacherules(struct DnsQuestion *question)
 void insert_cache(struct DnsQuestion *question, struct DnsAnswer *record)
 {
     pthread_mutex_lock(&cache_mutex);
+
+    char type_and_name[MAX_DOMAIN_LEN];
+    if (question->qtype == A) {
+        sprintf(type_and_name, "0000A%s", question->qname);
+    } else if (question->qtype == AAAA) {
+        sprintf(type_and_name, "0AAAA%s", question->qname);
+    } else if (question->qtype == CNAME) {
+        sprintf(type_and_name, "CNAME%s", question->qname);
+    } else if (question->qtype == MX) {
+        sprintf(type_and_name, "000MX%s", question->qname);
+    } else {
+        pthread_mutex_unlock(&cache_mutex);
+        return;
+    }
+
     // 如果 Cache 未满，直接插入
     if (cache.cached < server_config.cache_size) {
-        GList *trie_record = search_trie(cache.root, question->qname);
+        GList *trie_record = search_trie(cache.root, type_and_name);
         if (trie_record != NULL) { // 如果已经存在该记录，先从 Cache 删除
             --cache.cached;
             // 将 Trie 树中对应节点改为 NULL
-            cache.root = insert_trie(cache.root, question->qname, NULL);
+            cache.root = insert_trie(cache.root, type_and_name, NULL);
             free(trie_record->data);
             cache.cache_mru_first = g_list_delete_link(cache.cache_mru_first, trie_record);
         }
@@ -84,7 +114,7 @@ void insert_cache(struct DnsQuestion *question, struct DnsAnswer *record)
         // 将缓存插入链表头部
         cache.cache_mru_first = g_list_prepend(cache.cache_mru_first, record);
         // 将缓存插入 Trie
-        cache.root = insert_trie(cache.root, question->qname, cache.cache_mru_first);
+        cache.root = insert_trie(cache.root, type_and_name, cache.cache_mru_first);
     } else { // 如果缓存已满，使用 LRU 算法替换缓存
         // 从链表尾部取出最久未使用的缓存
         GList *lru_resource_link = g_list_last(cache.cache_mru_first);
@@ -96,7 +126,7 @@ void insert_cache(struct DnsQuestion *question, struct DnsAnswer *record)
         // 将新缓存插入链表头部
         cache.cache_mru_first = g_list_prepend(cache.cache_mru_first, record);
         // 将新缓存插入 Trie
-        cache.root = insert_trie(cache.root, question->qname, cache.cache_mru_first);
+        cache.root = insert_trie(cache.root, type_and_name, cache.cache_mru_first);
     }
     pthread_mutex_unlock(&cache_mutex);
 }
