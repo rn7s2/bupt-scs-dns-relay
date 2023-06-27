@@ -34,6 +34,7 @@ int parse_args(int argc, char **argv, struct Config *config)
                 break;
             case 't':
                 config->rto = atoi(cag_option_get_value(&context));
+                break;
             case 'p':
                 config->port = atoi(cag_option_get_value(&context));
                 break;
@@ -47,6 +48,7 @@ int parse_args(int argc, char **argv, struct Config *config)
                        "  -v, --verbose             调试级别 2 (输出冗长的调试信息)\n"
                        "  -h, --help                显示本帮助信息，然后退出\n"
                        "  -s, --server=VALUE        使用指定的 DNS 服务器 (默认为阿里 DNS)\n"
+                       "  -t, --timeout=VALUE       指定请求上级 DNS 服务器超时时间 (默认为 7500 ms)\n"
                        "  -p, --port=VALUE          使用指定的端口号 (默认为 53)\n"
                        "  -c, --cache=VALUE         指定 Cache 最大数量 (默认为 2048)\n"
                        "  -f, --filename=FILE       使用指定的配置文件 (默认为 dnsrelay.txt)\n");
