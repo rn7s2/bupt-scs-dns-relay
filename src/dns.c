@@ -237,11 +237,10 @@ struct DnsAnswer *dns_query(struct DnsQuestion *question)
     sendto(sockfd, packet, packet_len, MSG_WAITALL,
            (struct sockaddr *) &server_addr, sizeof server_addr);
 
-    // TODO 改为单独线程计算出的 RTO (重传超时时间)
-    // 目前暂时使用 7.5s
+    // 设置请求上级 DNS 的超时时间
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 1000 * 7500;
+    tv.tv_usec = 1000 * server_config.rto;
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     int n;

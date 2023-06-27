@@ -11,6 +11,7 @@ int parse_args(int argc, char **argv, struct Config *config)
 {
     config->port = 53;
     config->cache_size = 2048;
+    config->rto = 7500;
 
     cag_option_context context;
 
@@ -31,6 +32,8 @@ int parse_args(int argc, char **argv, struct Config *config)
             case 'f':
                 config->filename = cag_option_get_value(&context);
                 break;
+            case 't':
+                config->rto = atoi(cag_option_get_value(&context));
             case 'p':
                 config->port = atoi(cag_option_get_value(&context));
                 break;
@@ -77,4 +80,6 @@ void dump_args(struct Config *config)
     printf("dns_server_ipaddr: %s\n", config->dns_server_ipaddr);
     printf("filename: %s\n", config->filename);
     printf("port: %d\n", config->port);
+    printf("cache_size: %d\n", config->cache_size);
+    printf("rto: %d\n", config->rto);
 }

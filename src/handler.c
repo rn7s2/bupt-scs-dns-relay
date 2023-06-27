@@ -122,7 +122,10 @@ void run_handler()
 
             if (server_config.debug_level >= 2) {
                 uint16_t *v6_addr = (uint16_t *) &client_addr6.sin6_addr;
-                debug("RECVREQ from: [%x:%x:%x:%x]:%d", v6_addr[0], v6_addr[1], v6_addr[2], v6_addr[3], ntohs(client_addr6.sin6_port));
+                debug("RECVREQ from: [%x:%x:%x:%x:%x:%x:%x:%x]:%d",
+                      ntohs(v6_addr[0]), ntohs(v6_addr[1]), ntohs(v6_addr[2]), ntohs(v6_addr[3]),
+                      ntohs(v6_addr[4]), ntohs(v6_addr[5]), ntohs(v6_addr[6]), ntohs(v6_addr[7]),
+                      ntohs(client_addr6.sin6_port));
             }
 
             struct RequestArgs *args = malloc(sizeof(struct RequestArgs));
