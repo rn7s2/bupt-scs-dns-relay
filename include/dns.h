@@ -108,7 +108,7 @@ void free_id();
  * @param args 请求参数，包含整个 DNS 报文
  * @param user_data 无意义，可忽略
  */
-void handle_dns_request(struct RequestArgs *args, void *user_data);
+void handle_dns_request(struct RequestArgs *args, __attribute__((unused)) void *user_data);
 
 /**
  * 将 DNS 报文头部的各个字段从网络字节序转换为主机字节序

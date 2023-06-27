@@ -1,10 +1,3 @@
-/**
-    Code for https://journaldev.com article
-    Purpose: A Trie Data Structure Implementation in C
-    @author: Vijay Ramachandran
-    @modified: rn7s2
-*/
-
 #ifndef BUPT_SCS_DNS_RELAY_TRIE_H
 #define BUPT_SCS_DNS_RELAY_TRIE_H
 

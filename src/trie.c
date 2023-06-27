@@ -1,10 +1,3 @@
-/**
-    Code for https://journaldev.com article
-    Purpose: A Trie Data Structure Implementation in C
-    @author: Vijay Ramachandran
-    @modified: rn7s2
-*/
-
 #include "trie.h"
 
 #include <stdlib.h>
@@ -12,7 +5,6 @@
 
 struct TrieNode *make_trienode(void *data)
 {
-    // Allocate memory for a TrieNode
     struct TrieNode *node = (struct TrieNode *) calloc(1, sizeof(struct TrieNode));
     for (int i = 0; i < N; i++)
         node->children[i] = NULL;
@@ -21,9 +13,10 @@ struct TrieNode *make_trienode(void *data)
     return node;
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
 void free_trienode(struct TrieNode *node, int free_data)
 {
-    // Free the struct TrieNode sequence
     for (int i = 0; i < N; i++) {
         if (node->children[i] != NULL) {
             free_trienode(node->children[i], free_data);
@@ -36,29 +29,26 @@ void free_trienode(struct TrieNode *node, int free_data)
     }
     free(node);
 }
+#pragma clang diagnostic pop
 
 struct TrieNode *insert_trie(struct TrieNode *root, const char *word, void *data)
 {
-    // Inserts the word onto the Trie
-    // ASSUMPTION: The word only has upper case characters
+    // 假定：word 只包含大写字母
     struct TrieNode *temp = root;
 
     for (int i = 0; word[i] != '\0'; i++) {
-        // Get the relative position in the alphabet list
         int idx = (int) word[i] - FIRST_CHAR;
         if (temp->children[idx] == NULL) {
-            // If the corresponding child doesn't exist,
-            // simply create that child!
+            // 如果不存在，那么创建子节点
             temp->children[idx] = make_trienode(NULL);
         } else {
-            // Do nothing. The node already exists
+            // 如果已经存在，那么不需要再创建
         }
-        // Go down a level, to the child referenced by idx
-        // since we have a prefix match
+        // 向下一层移动
         temp = temp->children[idx];
     }
-    // At the end of the word, mark this node as the leaf node
-    // 并且保存对应的 Cache 块给 cell
+    // 到达单词结尾，设置 is_leaf 为 1
+    // 并且保存对应的 data 给 cell
     temp->is_leaf = 1;
     temp->data = data;
     return root;
@@ -66,7 +56,6 @@ struct TrieNode *insert_trie(struct TrieNode *root, const char *word, void *data
 
 void *search_trie(struct TrieNode *root, const char *word)
 {
-    // Searches for word in the Trie
     struct TrieNode *temp = root;
 
     for (int i = 0; word[i] != '\0'; i++) {

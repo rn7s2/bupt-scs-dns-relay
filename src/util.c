@@ -13,7 +13,7 @@ void str_tolower(char *str)
 {
     for (int i = 0; str[i] != '\0'; i++) {
         if (isupper(str[i])) {
-            str[i] = tolower(str[i]);
+            str[i] = tolower(str[i]); // NOLINT(cppcoreguidelines-narrowing-conversions)
         }
     }
 }
@@ -22,7 +22,7 @@ void str_toupper(char *str)
 {
     for (int i = 0; str[i] != '\0'; i++) {
         if (islower(str[i])) {
-            str[i] = toupper(str[i]);
+            str[i] = toupper(str[i]); // NOLINT(cppcoreguidelines-narrowing-conversions)
         }
     }
 }

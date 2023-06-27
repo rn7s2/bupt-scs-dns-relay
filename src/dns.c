@@ -29,7 +29,7 @@ void free_id()
     pthread_mutex_destroy(&id_mutex);
 }
 
-void handle_dns_request(struct RequestArgs *args, void *user_data)
+void handle_dns_request(struct RequestArgs *args, __attribute__((unused)) void *user_data)
 {
     // 请求的数据存放在 buf 缓冲区
     struct DnsHeader *header = (struct DnsHeader *) args->buf;

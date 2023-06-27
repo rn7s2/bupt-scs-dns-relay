@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cert-err34-c"
 int parse_args(int argc, char **argv, struct Config *config)
 {
     config->port = 53;
@@ -75,6 +77,7 @@ int parse_args(int argc, char **argv, struct Config *config)
 
     return 0;
 }
+#pragma clang diagnostic pop
 
 void dump_args(struct Config *config)
 {

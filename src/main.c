@@ -12,7 +12,7 @@ struct Config server_config = {0};
 static void init();
 
 /// 优雅地释放资源、关闭服务器
-static void graceful_shutdown(int sig);
+static void graceful_shutdown(__attribute__((unused)) int sig);
 
 int main(int argc, char **argv)
 {
@@ -44,7 +44,7 @@ static void init()
     }
 }
 
-static void graceful_shutdown(int sig)
+static void graceful_shutdown(__attribute__((unused)) int sig)
 {
     // 停止各个模块
     free_handler();
